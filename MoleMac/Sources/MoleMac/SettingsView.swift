@@ -133,14 +133,10 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
-                    Picker("", selection: store.deleteModeBox.binding) {
-                        Text("Trash").tag(Reclaimer.Mode.trash)
-                        Text("Permanent").tag(Reclaimer.Mode.permanent)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 170)
-                    .help("Trash keeps items recoverable")
+                    DeleteModeSegments(mode: store.deleteModeBox.binding,
+                                   trashTitle: "Trash",
+                                   permanentTitle: "Permanent")
+                    .frame(width: 190)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)

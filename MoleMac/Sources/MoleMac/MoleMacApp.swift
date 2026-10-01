@@ -6,14 +6,31 @@ struct MoleMacApp: App {
     @StateObject private var store = AppStore()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: WindowID.main) {
             RootView()
                 .environmentObject(store)
                 .tint(Theme.accent)
+                .onAppear {
+                    store.mainWindowOpener = {
+                        NSApp.setActivationPolicy(.regular)
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1080, height: 720)
+
+        // The menu bar item is the app's persistent surface: it keeps the scan
+        // result one click away without the window, which is the whole point of a
+        // cleanup tool you trust to run in the background.
+        MenuBarExtra {
+            MenuBarPanel()
+                .environmentObject(store)
+        } label: {
+            MenuBarLabel(store: store)
+        }
+        .menuBarExtraStyle(.window)
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandMenu("Clean") {
@@ -28,6 +45,31 @@ struct MoleMacApp: App {
                     NSWorkspace.shared.activateFileViewerSelecting([Paths.logDir])
                 }
             }
+        }
+    }
+}
+
+enum WindowID {
+    static let main = "main"
+}
+
+/// The menu bar glyph: the icon normally, the recoverable size when there is one,
+/// so the bar itself answers "is it worth opening?".
+///
+/// `store` is observed here rather than injected as an environment object: the
+/// `App` body does not depend on `store`, so a label reading it that way was
+/// never invalidated when a scan finished and sat on the icon indefinitely.
+struct MenuBarLabel: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        if store.selectedBytes > 0 {
+            Text(ByteFormat.compact(store.selectedBytes))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .help("\(ByteFormat.compact(store.selectedBytes)) selected to clean")
+        } else {
+            Image(systemName: "sparkles")
+                .help("MoleMac — nothing selected")
         }
     }
 }

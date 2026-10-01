@@ -31,8 +31,26 @@ struct CleanView: View {
                                 .filter { $0.categoryID == category }.count,
                             totalCount: store.count(for: category),
                             keptCount: store.keptCount(for: category),
-                            isActive: store.selectedCategory == category)
-                        .onTapGesture { store.setCategory(category, selectAll: nil) }
+                            isActive: store.selectedCategory == category,
+                            onToggleCategory: {
+                                // One click means "clean exactly this". A category
+                                // that is partly selected becomes fully selected,
+                                // and a fully selected one clears — so the same
+                                // control both narrows a clean to one category and
+                                // undoes it.
+                                let pool = store.targets.filter { $0.categoryID == category }
+                                let selected = pool.filter { store.selectedPaths.contains($0.path) }
+                                store.setCategory(category, selectAll: selected.count < pool.count)
+                            })
+                            .onTapGesture { store.setCategory(category, selectAll: nil) }
+                            .contextMenu {
+                                Button("Clean only this category") {
+                                    store.setCategory(category, selectAll: true)
+                                }
+                                Button("Clear this category") {
+                                    store.setCategory(category, selectAll: false)
+                                }
+                            }
                     }
                 }
                 .padding(.horizontal, 8)
@@ -137,24 +155,8 @@ struct CleanView: View {
             .buttonStyle(.plain)
             .disabled(store.selectedPaths.isEmpty || store.cleanIsRunning)
 
-            HStack(spacing: 6) {
-                Checkbox(isOn: store.deleteModeIsPermanentBox.value,
-                         label: store.deleteModeIsPermanentBox.value
-                            ? "Switch to Move to Trash" : "Switch to Delete permanently") {
-                    store.deleteModeIsPermanentBox.toggle()
-                }
-                HStack(spacing: 4) {
-                    Image(systemName: store.deleteModeIsPermanentBox.value
-                          ? "exclamationmark.triangle.fill" : "trash")
-                        .font(.system(size: 9))
-                    Text(store.deleteModeIsPermanentBox.value ? "Delete permanently" : "Move to Trash")
-                        .font(.system(size: 10))
-                }
-                .foregroundStyle(store.deleteModeIsPermanentBox.value ? Theme.danger : Theme.inkSecondary)
-            }
-            .help(store.deleteModeIsPermanentBox.value
-                  ? "No undo. Prefer Trash unless you need the space back immediately."
-                  : "Recoverable until you empty the Trash.")
+            // Shared with Settings, so the two screens cannot drift apart visually.
+            DeleteModeSegments(mode: store.deleteModeBox.binding)
         }
     }
 

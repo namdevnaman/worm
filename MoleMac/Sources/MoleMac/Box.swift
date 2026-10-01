@@ -33,4 +33,8 @@ extension Box where Value == Bool {
     func toggle() {
         value.toggle()
     }
+
+    func set(_ newValue: Bool) {
+        value = newValue
+    }
 }

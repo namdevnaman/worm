@@ -143,6 +143,11 @@ struct DiskView: View {
                                         .lineLimit(1)
                                         .truncationMode(.head)
                                 }
+                                // The path is allowed to shrink; the name and the
+                                // size are not. Without this the size was the
+                                // flexible one and a long path squeezed it into
+                                // "5.48 G".
+                                .layoutPriority(1)
 
                                 Spacer(minLength: 10)
 
@@ -152,6 +157,7 @@ struct DiskView: View {
                                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                                     .foregroundStyle(Theme.ink)
                                     .monospacedDigit()
+                                    .fixedSize()
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 9)

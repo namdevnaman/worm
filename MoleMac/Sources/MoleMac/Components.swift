@@ -10,13 +10,34 @@ struct CategoryRow: View {
     let totalCount: Int
     let keptCount: Int
     let isActive: Bool
+    /// Selects or clears the whole category. Nil hides the checkbox, for
+    /// categories with nothing in them.
+    var onToggleCategory: (() -> Void)?
+
+    /// Three states, matching what the eye needs: everything picked, part of it,
+    /// or none of it. A two-state box cannot express "you have deselected one item
+    /// out of seventy" without lying about it.
+    private var selectionState: SelectionState {
+        if totalCount == 0 { return .none }
+        if selectedCount == 0 { return .none }
+        if selectedCount >= totalCount { return .all }
+        return .partial
+    }
+
+    enum SelectionState { case all, partial, none }
 
     var body: some View {
         HStack(spacing: 9) {
-            Image(systemName: category.symbol)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 16)
-                .foregroundStyle(isActive ? Theme.accent : Theme.inkTertiary)
+            // One click on the box cleans exactly this category and nothing else,
+            // which is the common intent: "just the app caches".
+            if let onToggleCategory, totalCount > 0 {
+                TriStateBox(state: selectionState) { onToggleCategory() }
+            } else {
+                Image(systemName: category.symbol)
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 16)
+                    .foregroundStyle(isActive ? Theme.accent : Theme.inkTertiary)
+            }
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(category.title)
@@ -25,7 +46,9 @@ struct CategoryRow: View {
                     .lineLimit(1)
 
                 if totalCount > 0 {
-                    Text("\(selectedCount)/\(totalCount) selected")
+                    Text(selectionState == .all
+                         ? "\(totalCount) selected"
+                         : "\(selectedCount)/\(totalCount) selected")
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.inkTertiary)
                         .lineLimit(1)
@@ -43,6 +66,7 @@ struct CategoryRow: View {
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(isActive ? Theme.accent : Theme.inkSecondary)
                     .monospacedDigit()
+                    .fixedSize()
             }
         }
         .padding(.vertical, 5)
@@ -52,6 +76,41 @@ struct CategoryRow: View {
                 .fill(isActive ? Theme.accentSoft : .clear)
         )
         .contentShape(Rectangle())
+    }
+}
+
+/// A checkbox that can also be half-checked.
+struct TriStateBox: View {
+    let state: CategoryRow.SelectionState
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(state == .none ? Color.clear : Theme.accent)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .strokeBorder(state == .none ? Theme.hairline : .clear,
+                                          lineWidth: 1))
+                if state == .partial {
+                    Rectangle()
+                        .fill(.white)
+                        .frame(width: 8, height: 2)
+                } else if state == .all {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 14, height: 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(state == .all ? "Clear this category" : "Select all of this category")
+        .accessibilityLabel(state == .all ? "Clear category"
+                           : (state == .partial ? "Select whole category"
+                              : "Select whole category"))
     }
 }
 
@@ -215,5 +274,62 @@ struct BlockedRow: View {
         .padding(.horizontal, 10)
         .background(Theme.background.opacity(0.6))
         .help(blocked.path)
+    }
+}
+/// The recoverable / permanent choice, shown identically wherever it appears.
+///
+/// Two screens expose this mode, and when they disagreed the Clean tab could
+/// promise a recoverable clean while the actual run was permanent. Sharing one
+/// component — bound to the single `deleteMode` — removes both the visual drift
+/// and the chance of two sources of truth.
+struct DeleteModeSegments: View {
+    @Binding var mode: Reclaimer.Mode
+    var trashTitle = "Move to Trash"
+    var permanentTitle = "Delete permanently"
+
+    var body: some View {
+        HStack(spacing: 0) {
+            segment(trashTitle, "trash", active: mode == .trash,
+                    tint: Theme.accent,
+                    help: "Recoverable until you empty the Trash.") {
+                mode = .trash
+            }
+            segment(permanentTitle, "exclamationmark.triangle.fill",
+                    active: mode == .permanent, tint: Theme.danger,
+                    help: "No undo. Prefer Trash unless you need the space back immediately.") {
+                mode = .permanent
+            }
+        }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Theme.surface))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Theme.hairline, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Delete mode")
+    }
+
+    private func segment(_ title: String, _ symbol: String, active: Bool,
+                         tint: Color, help: String,
+                         action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 9, weight: .medium))
+                Text(title).font(.system(size: 11, weight: active ? .semibold : .regular))
+            }
+            .foregroundStyle(active ? .white : Theme.inkSecondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(active ? tint : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(active ? [.isSelected] : [])
     }
 }

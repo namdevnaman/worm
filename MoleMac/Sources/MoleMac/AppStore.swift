@@ -64,7 +64,10 @@ final class AppStore: ObservableObject {
     /// toolchain, so controls bind through a `Box` instead of a `@State` var.
     let searchTextBox = Box("")
     let showBlockedBox = Box(false)
-    let deleteModeIsPermanentBox = Box(false)
+    // One box, one mode. There used to be a second `Bool` box that also wrote
+    // `deleteMode` without reading it, so the Clean tab's "Move to Trash"
+    // segment and the Settings picker could disagree — the screen would promise
+    // a recoverable clean while the run was permanent. The Bool is now derived.
     let deleteModeBox = Box(Reclaimer.Mode.trash)
 
     struct Banner: Identifiable, Equatable {
@@ -91,12 +94,16 @@ final class AppStore: ObservableObject {
         showBlockedBox.$value
             .sink { [weak self] in self?.showBlocked = $0 }
             .store(in: &cancellables)
-        deleteModeIsPermanentBox.$value
-            .sink { [weak self] in self?.deleteMode = $0 ? .permanent : .trash }
-            .store(in: &cancellables)
         deleteModeBox.$value
             .sink { [weak self] in self?.deleteMode = $0 }
             .store(in: &cancellables)
+    }
+
+    /// Derived so no two screens can show a different delete mode.
+    var deleteIsPermanent: Bool { deleteMode == .permanent }
+
+    func setDeleteMode(_ mode: Reclaimer.Mode) {
+        deleteModeBox.value = mode
     }
 
     // MARK: Derived data
@@ -143,9 +150,35 @@ final class AppStore: ObservableObject {
         targets.filter { selectedPaths.contains($0.path) }
     }
 
-    var selectedBytes: Int64 {
+var selectedBytes: Int64 {
         selectedTargets.reduce(0) { $0 + $1.bytes }
     }
+
+    /// One line describing the scan, reused by the menu bar panel so both places
+    /// cannot drift apart in wording.
+    var reclaimableSummary: String {
+        if scanState.isScanning { return "Scanning…" }
+        switch scanState {
+        case .scanned:
+            let cleanable = selectedBytes
+            return cleanable > 0
+                ? "\(ByteFormat.compact(cleanable)) selected to clean"
+                : "\(ByteFormat.compact(totalBytes)) reclaimable"
+        case .failed:
+            return "Scan failed — open MoleMac to retry"
+        case .idle, .scanning:
+            return "Nothing scanned yet"
+        }
+    }
+
+    /// Brings the main window forward. `openMainWindow` is only available from an
+    /// `App`, so the window plumbing is handed in at launch.
+    func openMainWindow() {
+        mainWindowOpener?()
+    }
+
+    /// Injected by `MoleMacApp`, since only an `App` can reopen its window.
+    var mainWindowOpener: (() -> Void)?
 
     /// Paths that are cleanable but carry a caution, keyed by path.
     var warnings: [String: SafetyPolicy.Reason] {
@@ -596,15 +629,38 @@ final class AppStore: ObservableObject {
             }
         }
 
-        removalPlan = nil
+removalPlan = nil
+
+        // Whatever the user chose not to tick is now genuinely an orphan, because
+        // the app is gone. Tell them rather than leaving it to be rediscovered in
+        // a list they have to go looking for.
+        let keptBack = OrphanDetector.traces(forBundleID: app.id)
+            .filter { left in !traces.contains { $0.id == left.id } }
+
         notify(Banner(
-            kind: .success,
+            kind: keptBack.isEmpty ? .success : .info,
             title: "Removed \(app.name)",
-            detail: removedCount > 0
-                ? "With \(removedCount) leftover\(removedCount == 1 ? "" : "s"), \(ByteFormat.compact(removedBytes)). Restore from the Trash if you change your mind."
-                : "Restore from the Trash if you change your mind."))
+            detail: keptBackDetail(appName: app.name,
+                                   removedCount: removedCount,
+                                   removedBytes: removedBytes,
+                                   keptBack: keptBack)))
         loadApps()
         loadOrphans()
+    }
+
+    private func keptBackDetail(appName: String, removedCount: Int,
+                                removedBytes: Int64,
+                                keptBack: [OrphanDetector.Leftover]) -> String {
+        var parts: [String] = []
+        if removedCount > 0 {
+            parts.append("With \(removedCount) leftover\(removedCount == 1 ? "" : "s"), \(ByteFormat.compact(removedBytes))")
+        }
+        parts.append("Restore from the Trash if you change your mind.")
+
+        guard !keptBack.isEmpty else { return parts.joined(separator: ". ") + "." }
+        let total = keptBack.reduce(0) { $0 + $1.bytes }
+        return parts.joined(separator: ". ")
+            + ". \(keptBack.count) trace\(keptBack.count == 1 ? "" : "s") of \(appName) kept, \(ByteFormat.compact(total)) — now listed under Leftovers."
     }
 
     /// Load the installed-app list. Off the main actor because reading every

@@ -14,7 +14,12 @@ enum Theme {
 
     static let ink = Color(red: 0.114, green: 0.106, blue: 0.102)
     static let inkSecondary = Color(red: 0.353, green: 0.333, blue: 0.310)
-    static let inkTertiary = Color(red: 0.573, green: 0.549, blue: 0.518)
+    /// Tertiary text: captions, paths, secondary metadata.
+    ///
+    /// Previously (0.573, 0.549, 0.518), which is only about 3.2:1 on the white
+    /// background and read as washed-out grey at the 10-11pt sizes it is used at.
+    /// WCAG AA wants 4.5:1 for body text, so this is roughly #6E6A64.
+    static let inkTertiary = Color(red: 0.431, green: 0.416, blue: 0.392)
 
     static let accent = Color(red: 0.176, green: 0.353, blue: 0.255)
     static let accentSoft = Color(red: 0.882, green: 0.925, blue: 0.898)
