@@ -115,14 +115,21 @@ public enum SizeMeasurer {
             // empty" is not a usable probe: an empty container and a protected one
             // look the same from the outside.
             //
-            // This cannot distinguish "never granted" from "granted to a build
-            // that no longer matches": macOS keeps the System Settings toggle on in
-            // the second case, and reading the user's own TCC database to tell them
-            // apart needs Full Disk Access itself. So the app does not try, and the
-            // notice gives one instruction that covers both.
+            // The signal is a *majority*, not "any". Without Full Disk Access
+            // essentially no container contents can be read, so the fraction sits
+            // near zero. With it, nearly all can — but a handful can still be
+            // unreadable for unrelated reasons (root-owned, SIP-protected,
+            // belonging to a removed app with odd ownership). Testing "any
+            // unreadable" therefore reported missing access even when the grant
+            // was live, and the app kept asking for a permission it already had.
             let sample = Paths.containers.path
             let names = (try? FileManager.default.contentsOfDirectory(atPath: sample)) ?? []
-            return names.contains { !canRead("\(sample)/\($0)") }
+            guard !names.isEmpty else { return true }
+            // Cap the work: a Mac can hold hundreds of containers and one stat per
+            // entry is not free.
+            let probed = names.prefix(40)
+            let readable = probed.filter { canRead("\(sample)/\($0)") }.count
+            return readable * 2 < probed.count
         }
     }
 

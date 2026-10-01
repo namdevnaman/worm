@@ -29,6 +29,19 @@ Status legend: **[x]** verified working · **[~]** built, not verified ·
 
 ## In progress
 
+- [!] **Full Disk Access: re-add required, and this time it will hold.** System
+      Settings shows MoleMac listed with the toggle ON, but the app still gets no
+      access. Cause: the app was granted access while its signature requirement
+      was the ad-hoc default `designated => cdhash H"…"`. TCC stores the
+      requirement that was in force at grant time, and a cdhash grant can never
+      match a signature whose requirement is `identifier "dev.local.molemac"` —
+      which is what the build now produces, precisely so grants survive rebuilds.
+      The existing entry is inert but still displays as ON, which is what made
+      this look like the grant was being ignored.
+      **Fix, once:** System Settings → Privacy & Security → Full Disk Access →
+      select MoleMac → **−** → **+** → choose `/Applications/MoleMac.app` → quit
+      and reopen MoleMac. Verified after: rebuild the app and confirm the notice
+      stays away, which proves the grant now survives a new signature.
 - [ ] **Menu bar panel — needs a human click to confirm.** The `MenuBarExtra`
       registers and its label is live (AX reads `AXMenuBarItem "1.28 GB"` with a
       tooltip), and `MenuBarPanel` is wired to the same `AppStore` as the window.
@@ -67,6 +80,11 @@ Status legend: **[x]** verified working · **[~]** built, not verified ·
       permanent. Reduced to one box; both screens share `DeleteModeSegments`.
 - [x] **Settings picker rendered an empty segment.** The native segmented Picker
       drew its selection white-on-white, so "Permanent" looked like a blank box.
+- [x] **FDA probe had a false negative.** It reported "no access" when *any* one
+      container was unreadable. With the grant live, a few containers remain
+      unreadable for unrelated reasons (root-owned, SIP-protected, odd ownership
+      from a removed app), so the notice reappeared on a Mac that already had the
+      permission. Now judged on a majority of a 40-container sample.
 - [x] **Menu bar label never updated.** The `App` body does not depend on
       `store`, so `MenuBarExtra`'s label was never invalidated and sat on the
       icon after every scan. The label now observes the store directly.
