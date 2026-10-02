@@ -15,6 +15,7 @@ public record HardwareSnapshot(
     double RamUsagePercent,
     long DiskUsedBytes,
     long DiskTotalBytes,
+    long DiskFreeBytes,
     double DiskUsagePercent,
     int ProcessCount
 );
@@ -25,8 +26,13 @@ public record HardwareSnapshot(
 /// </summary>
 public static class WindowsHardwareSampler
 {
+    // Must be a struct: GlobalMemoryStatusEx writes through a pointer to a
+    // caller-allocated buffer whose first field is the struct size. Declaring it
+    // as a class makes the marshaller allocate a copy, which works by accident
+    // rather than by contract, and fails outright for the CharSet.Auto + [In,Out]
+    // combination used below.
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private class MEMORYSTATUSEX
+    private struct MEMORYSTATUSEX
     {
         public uint dwLength;
         public uint dwMemoryLoad;
@@ -37,16 +43,11 @@ public static class WindowsHardwareSampler
         public ulong ullTotalVirtual;
         public ulong ullAvailVirtual;
         public ulong ullAvailExtendedVirtual;
-
-        public MEMORYSTATUSEX()
-        {
-            dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
-        }
     }
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
+    private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -77,8 +78,8 @@ public static class WindowsHardwareSampler
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            var mem = new MEMORYSTATUSEX();
-            if (GlobalMemoryStatusEx(mem))
+            var mem = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf<MEMORYSTATUSEX>() };
+            if (GlobalMemoryStatusEx(ref mem))
             {
                 ramTotal = (long)mem.ullTotalPhys;
                 long avail = (long)mem.ullAvailPhys;
@@ -87,31 +88,45 @@ public static class WindowsHardwareSampler
             }
         }
 
-        // Sample Primary System Disk
+        // Every ready fixed volume, not just the Windows drive: users keep data
+        // on other drives and a system-only gauge reads as wrong on those
+        // machines.
         long diskTotal = 0;
-        long diskUsed = 0;
+        long diskFree = 0;
         double diskPercent = 0;
         try
         {
-            var drive = new DriveInfo(Path.GetPathRoot(WindowsPaths.WindowsDir) ?? "C:\\");
-            if (drive.IsReady)
+            foreach (var d in DriveInfo.GetDrives())
             {
-                diskTotal = drive.TotalSize;
-                diskUsed = diskTotal - drive.AvailableFreeSpace;
-                diskPercent = diskTotal > 0 ? (double)diskUsed / diskTotal * 100.0 : 0;
+                if (!d.IsReady) continue;
+                var format = d.DriveFormat.ToLowerInvariant();
+                if (format is not ("ntfs" or "fat32" or "exfat")) continue;
+                diskTotal += d.TotalSize;
+                diskFree += d.AvailableFreeSpace;
             }
+            var used = Math.Max(0, diskTotal - diskFree);
+            diskPercent = diskTotal > 0 ? (double)used / diskTotal * 100.0 : 0;
         }
         catch { }
 
-        int procCount = Process.GetProcesses().Length;
+        int procCount;
+        try
+        {
+            procCount = Process.GetProcesses().Length;
+        }
+        catch
+        {
+            procCount = 0;
+        }
 
         return new HardwareSnapshot(
             Math.Round(cpu, 1),
             ramUsed,
             ramTotal,
             Math.Round(ramPercent, 1),
-            diskUsed,
+            Math.Max(0, diskTotal - diskFree),
             diskTotal,
+            diskFree,
             Math.Round(diskPercent, 1),
             procCount
         );

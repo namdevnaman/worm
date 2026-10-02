@@ -39,14 +39,30 @@
                 </StackPanel>
             </Border>
 
+            <!-- Clean Screen Card -->
+            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Clean Screen Mode" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource WormIvoryText}"/>
+                    <TextBlock Text="Blanks every display so you can wipe the screen with a cloth without smearing it. Press Esc or click anywhere to exit."
+                               FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,2,0,12" TextWrapping="Wrap"/>
+                    <Button x:Name="BtnCleanScreen" Content="Start Clean Screen"
+                            Click="BtnCleanScreen_Click" HorizontalAlignment="Left"
+                            Style="{StaticResource PrimaryButton}"/>
+                </StackPanel>
+            </Border>
+
             <!-- About Card -->
             <Border Background="{StaticResource WormLoamSurface}" CornerRadius="8" Padding="16">
                 <StackPanel>
-                    <TextBlock Text="About Worm for Windows" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource WormIvoryText}"/>
-                    <TextBlock Text="Version 1.0.1 — Ultra-fast, transparent system cleaner and hardware monitor." 
+                    <TextBlock Text="About Worm Cleaner for Windows" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource WormIvoryText}"/>
+                    <!-- Version is set in code from the assembly, so it can never
+                         drift from the build the way a hardcoded literal did. -->
+                    <TextBlock x:Name="TxtAboutVersion"
                                FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,4,0,10"/>
-                    <TextBlock Text="Open Source under the MIT License • Built with .NET 9 &amp; WPF." 
-                               FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Worm Cleaner is a free, open-source MacBook and Windows disk cleaner, app uninstaller and system monitor. No telemetry, no subscription, no upsell."
+                               FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                    <TextBlock Text="Not code-signed, so Windows SmartScreen may warn on first launch. Open source under the MIT License • Built with .NET 9 &amp; WPF."
+                               FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,0,0,12" TextWrapping="Wrap"/>
 
                     <StackPanel Orientation="Horizontal">
                         <Button Content="GitHub Repository" Click="OpenRepo_Click" Margin="0,0,8,0"/>

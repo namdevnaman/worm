@@ -40,13 +40,11 @@ public static class WindowsReclaimer
     [DllImport("shell32.dll", CharSet = CharSet.Auto)]
     private static extern int SHFileOperation(ref SHFILEOPSTRUCT FileOp);
 
-    private static readonly object LogLock = new();
-
     public static async Task<bool> CleanTargetAsync(string targetPath, DeleteMode mode = DeleteMode.RecycleBin, CancellationToken ct = default)
     {
         if (WindowsSafetyPolicy.IsPathProtected(targetPath, out var reason))
         {
-            LogAudit("BLOCKED", 0, targetPath, reason);
+            WindowsAuditLog.Record("BLOCKED", 0, targetPath, reason);
             return false;
         }
 
@@ -81,12 +79,12 @@ public static class WindowsReclaimer
                     }
                 }
 
-                LogAudit("OK", size, targetPath, mode.ToString());
+                WindowsAuditLog.Record("OK", size, targetPath, mode.ToString());
                 return true;
             }
             catch (Exception ex)
             {
-                LogAudit("FAILED", 0, targetPath, ex.Message);
+                WindowsAuditLog.Record("FAILED", 0, targetPath, ex.Message);
                 return false;
             }
         }, ct);
@@ -122,16 +120,4 @@ public static class WindowsReclaimer
         return size;
     }
 
-    private static void LogAudit(string status, long size, string target, string note)
-    {
-        lock (LogLock)
-        {
-            try
-            {
-                var line = $"{DateTime.UtcNow:O}\t{status}\t{size}\t{target}\t{note}\n";
-                File.AppendAllText(WindowsPaths.DeletionLog, line, Encoding.UTF8);
-            }
-            catch { }
-        }
-    }
 }

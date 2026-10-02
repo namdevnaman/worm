@@ -162,6 +162,12 @@ jobs:
           $zipLen = (Get-Item $zipPath).Length
           Write-Host ("ZIP size: {0} MB" -f [math]::Round($zipLen / 1MB, 1))
 
+      # The catalog's allowlist and safety invariants are the things that must
+      # never silently drift, so they run before anything is packaged.
+      - name: Run WormCore safety tests
+        shell: pwsh
+        run: dotnet test worm-windows/tests/WormCore.Tests/WormCore.Tests.csproj -c Release --nologo
+
       - name: Validate installer scripts parse
         shell: pwsh
         run: |
@@ -185,6 +191,45 @@ jobs:
           if (-not $m.architecture.'64bit'.url) { throw "manifest has no x64 url" }
           if ($m.bin -notcontains 'Worm.exe') { throw "manifest bin must be Worm.exe" }
           Write-Host "Scoop manifest OK (version $($m.version))"
+
+      # v1.0.2 and v1.0.3 both compiled cleanly and then died the instant the
+      # window was created: XAML compiles to BAML, so a bad type converter or a
+      # missing icon only fails at runtime. This step actually launches the exe
+      # and fails on any crash, which is the only check that catches that class
+      # of bug before it ships.
+      - name: Launch smoke test
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'worm-windows/dist/win-x64/Worm.exe').Path
+          $logDir = Join-Path $env:LOCALAPPDATA 'Worm\Logs'
+          $crash  = Join-Path $logDir 'crash.log'
+          $start  = Join-Path $logDir 'startup.log'
+          Remove-Item $crash, $start -ErrorAction SilentlyContinue
+
+          $p = Start-Process -FilePath $exe -PassThru -ErrorAction Stop
+          Start-Sleep -Seconds 15
+          $alive = -not $p.HasExited
+          if ($alive) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+
+          if (Test-Path $crash) {
+            Write-Host '::group::Worm crash.log'
+            Get-Content $crash
+            Write-Host '::endgroup::'
+            throw "Worm.exe logged a startup crash - see crash.log above"
+          }
+
+          if (-not (Test-Path $start)) {
+            throw "startup.log was never written, so App.OnStartup did not complete"
+          }
+
+          if ($alive) {
+            Write-Host "Worm.exe ran for 15s with no crash log. Startup is healthy."
+          } else {
+            # No crash log and no startup log: most likely the runner has no
+            # interactive window station. Warn rather than fail, so a headless
+            # runner does not block releases, but keep it visible.
+            Write-Warning "Worm.exe exited without crashing and without logging; the runner may lack an interactive desktop."
+          }
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4

@@ -1,58 +1,225 @@
 <Page x:Class="Worm.UI.StatusPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:ui="http://schemas.modernwpf.com/2019"
-      Title="Hardware Status">
+      Title="Status"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType">
 
-    <Grid Margin="24">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Live System &amp; Hardware Telemetry" 
-                       FontSize="20" FontWeight="SemiBold" 
-                       Foreground="{StaticResource WormIvoryText}"/>
-            <TextBlock Text="Real-time processor utilization, RAM memory pressure, and primary SSD metrics." 
-                       FontSize="12" 
-                       Foreground="{StaticResource WormMutedText}" 
-                       Margin="0,4,0,0"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Hardware Status" Style="{StaticResource SectionTitle}" FontSize="15"/>
+            <TextBlock Style="{StaticResource Subtitle}"
+                       Text="Live CPU, memory, disk and thermal telemetry, sampled from the Win32 kernel."/>
         </StackPanel>
 
-        <!-- Metric Cards -->
-        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,24">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
 
-            <!-- CPU Card -->
-            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="10" Margin="0,0,12,0" Padding="18">
-                <StackPanel>
-                    <TextBlock Text="CPU Utilization" FontSize="13" Foreground="{StaticResource WormMutedText}"/>
-                    <TextBlock x:Name="TxtCpuVal" Text="0.0%" FontSize="32" FontWeight="Bold" Foreground="{StaticResource WormTerracottaAccent}" Margin="0,8,0,0"/>
-                    <ProgressBar x:Name="PbCpu" Height="6" Margin="0,16,0,0" Value="0" Maximum="100" Foreground="{StaticResource WormTerracottaAccent}"/>
-                    <TextBlock x:Name="TxtProcs" Text="Active Processes: 0" FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,12,0,0"/>
+                <!-- ============================ Loading ============================ -->
+                <StackPanel x:Name="PanelLoading" Visibility="Collapsed"
+                            HorizontalAlignment="Center" Margin="0,40,0,40">
+                    <ProgressBar IsIndeterminate="True" Width="180"
+                                 Style="{StaticResource WormProgressBar}"/>
+                    <TextBlock Text="Sampling hardware telemetry…"
+                               Style="{StaticResource Subtitle}"
+                               HorizontalAlignment="Center" Margin="0,12,0,0"/>
                 </StackPanel>
-            </Border>
 
-            <!-- RAM Card -->
-            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="10" Margin="0,0,12,0" Padding="18">
-                <StackPanel>
-                    <TextBlock Text="Memory (RAM)" FontSize="13" Foreground="{StaticResource WormMutedText}"/>
-                    <TextBlock x:Name="TxtRamVal" Text="0.0%" FontSize="32" FontWeight="Bold" Foreground="#4A90E2" Margin="0,8,0,0"/>
-                    <ProgressBar x:Name="PbRam" Height="6" Margin="0,16,0,0" Value="0" Maximum="100" Foreground="#4A90E2"/>
-                    <TextBlock x:Name="TxtRamDetail" Text="0 GB / 0 GB Used" FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,12,0,0"/>
+                <!-- ============================ Metrics ============================ -->
+                <StackPanel x:Name="PanelMetrics" Visibility="Collapsed">
+
+                    <!-- Row 1: Health / CPU / Memory / Disk -->
+                    <UniformGrid Rows="1" Columns="4" Margin="0,0,0,10">
+                        <Border Style="{StaticResource Card}" Margin="0,0,5,0">
+                            <StackPanel>
+                                <TextBlock Text="CPU" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource TintCpu}"/>
+                                <TextBlock x:Name="TxtCpu" Text="0.0%" FontSize="26"
+                                           FontWeight="Bold" Foreground="{StaticResource Ink}"
+                                           Margin="0,4,0,0"/>
+                                <ProgressBar x:Name="BarCpu" Height="6" Minimum="0" Maximum="100"
+                                             Style="{StaticResource WormProgressBar}"
+                                             Foreground="{StaticResource TintCpu}" Margin="0,8,0,0"/>
+                                <TextBlock x:Name="TxtCpuDetail" FontSize="9"
+                                           Foreground="{StaticResource InkTertiary}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="5,0">
+                            <StackPanel>
+                                <TextBlock Text="MEMORY" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource TintMemory}"/>
+                                <TextBlock x:Name="TxtRam" Text="0.0%" FontSize="26"
+                                           FontWeight="Bold" Foreground="{StaticResource Ink}"
+                                           Margin="0,4,0,0"/>
+                                <ProgressBar x:Name="BarRam" Height="6" Minimum="0" Maximum="100"
+                                             Style="{StaticResource WormProgressBar}"
+                                             Foreground="{StaticResource TintMemory}" Margin="0,8,0,0"/>
+                                <TextBlock x:Name="TxtRamDetail" FontSize="9"
+                                           Foreground="{StaticResource InkTertiary}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="5,0">
+                            <StackPanel>
+                                <TextBlock Text="DISK" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource TintDisk}"/>
+                                <TextBlock x:Name="TxtDiskFree" Text="0 B" FontSize="26"
+                                           FontWeight="Bold" Foreground="{StaticResource Ink}"
+                                           Margin="0,4,0,0"/>
+                                <ProgressBar x:Name="BarDisk" Height="6" Minimum="0" Maximum="100"
+                                             Style="{StaticResource WormProgressBar}"
+                                             Foreground="{StaticResource TintDisk}" Margin="0,8,0,0"/>
+                                <TextBlock x:Name="TxtDiskDetail" FontSize="9"
+                                           Foreground="{StaticResource InkTertiary}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="5,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="PROCESSES" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource TintFan}"/>
+                                <TextBlock x:Name="TxtProcCount" Text="0" FontSize="26"
+                                           FontWeight="Bold" Foreground="{StaticResource Ink}"
+                                           Margin="0,4,0,0"/>
+                                <ProgressBar x:Name="BarProc" Height="6" Minimum="0" Maximum="100"
+                                             Style="{StaticResource WormProgressBar}"
+                                             Foreground="{StaticResource TintFan}" Margin="0,8,0,0"/>
+                                <TextBlock Text="running now" FontSize="9"
+                                           Foreground="{StaticResource InkTertiary}" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- Row 2: System facts -->
+                    <Border Style="{StaticResource Card}">
+                        <ItemsControl x:Name="FactsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="170"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                   Style="{StaticResource BodyText}"
+                                                   Foreground="{StaticResource InkSecondary}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Value}"
+                                                   Style="{StaticResource BodyText}"
+                                                   Foreground="{StaticResource Ink}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <!-- ======================== Top processes ======================== -->
+                    <TextBlock Text="Top Processes" Margin="0,20,0,6"
+                               Style="{StaticResource SectionTitle}" FontSize="14"/>
+
+                    <Border Style="{StaticResource Card}" Padding="4">
+                        <StackPanel>
+                            <Grid Margin="10,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="60"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="70"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="NAME"
+                                           FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource InkTertiary}"/>
+                                <TextBlock Grid.Column="1" Text="PID" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource InkTertiary}"
+                                           HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Column="2" Text="MEMORY" FontSize="9" FontWeight="Bold"
+                                           Foreground="{StaticResource InkTertiary}"
+                                           HorizontalAlignment="Right"/>
+                                <TextBlock Grid.Column="3" Text="" FontSize="9"
+                                           FontWeight="Bold"/>
+                            </Grid>
+
+                            <ItemsControl x:Name="ProcessList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="Transparent" Padding="10,4">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="60"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Name}"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource Ink}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Pid}"
+                                                           FontSize="10"
+                                                           FontFamily="{StaticResource FontMono}"
+                                                           Foreground="{StaticResource InkTertiary}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding FormattedMemory}"
+                                                           FontSize="10"
+                                                           FontFamily="{StaticResource FontMono}"
+                                                           Foreground="{StaticResource InkSecondary}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ========================== Health checks ========================== -->
+                    <TextBlock Text="Checks" Margin="0,20,0,6"
+                               Style="{StaticResource SectionTitle}" FontSize="14"/>
+                    <Border Style="{StaticResource Card}">
+                        <ItemsControl x:Name="CheckList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Grid.Column="0" Width="7" Height="7"
+                                                 VerticalAlignment="Top" Margin="0,5,9,0"
+                                                 Fill="{Binding SeverityBrush}"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Title}" FontSize="12"
+                                                       FontWeight="Medium"
+                                                       Foreground="{StaticResource Ink}"/>
+                                            <TextBlock Text="{Binding Detail}" FontSize="10"
+                                                       Style="{StaticResource Subtitle}"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="2" Background="{Binding SeveritySoft}"
+                                                CornerRadius="4" Padding="5,2" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding SeverityText}" FontSize="9"
+                                                       FontWeight="Medium"
+                                                       Foreground="{Binding SeverityBrush}"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
                 </StackPanel>
-            </Border>
-
-            <!-- Disk Card -->
-            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="10" Padding="18">
-                <StackPanel>
-                    <TextBlock Text="Primary Storage (SSD)" FontSize="13" Foreground="{StaticResource WormMutedText}"/>
-                    <TextBlock x:Name="TxtDiskVal" Text="0.0%" FontSize="32" FontWeight="Bold" Foreground="#50E3C2" Margin="0,8,0,0"/>
-                    <ProgressBar x:Name="PbDisk" Height="6" Margin="0,16,0,0" Value="0" Maximum="100" Foreground="#50E3C2"/>
-                    <TextBlock x:Name="TxtDiskDetail" Text="0 GB / 0 GB Used" FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,12,0,0"/>
-                </StackPanel>
-            </Border>
-
-        </UniformGrid>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

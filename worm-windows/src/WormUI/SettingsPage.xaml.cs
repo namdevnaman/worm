@@ -12,7 +12,29 @@ public partial class SettingsPage : Page
     public SettingsPage()
     {
         InitializeComponent();
-        Loaded += (s, e) => RefreshList();
+        Loaded += (s, e) =>
+        {
+            RefreshList();
+            LoadAbout();
+        };
+    }
+
+    /// <summary>
+    /// Reads the version from the assembly rather than a literal in the XAML. The
+    /// hardcoded copy said 1.0.1 while the build was 1.0.3.
+    /// </summary>
+    private void LoadAbout()
+    {
+        try
+        {
+            var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            var version = v == null ? "unknown" : $"{v.Major}.{v.Minor}.{v.Build}";
+            TxtAboutVersion.Text = $"Version {version} — fast, transparent system cleaner and hardware monitor.";
+        }
+        catch
+        {
+            TxtAboutVersion.Text = "Version unknown.";
+        }
     }
 
     private void RefreshList()
@@ -51,6 +73,18 @@ public partial class SettingsPage : Page
             });
         }
         catch { }
+    }
+
+    private void BtnCleanScreen_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            CleanScreenMode.Show();
+        }
+        catch (Exception ex)
+        {
+            Worm.Core.WindowsCrashLog.Write("SettingsPage.BtnCleanScreen_Click", ex);
+        }
     }
 
     private void OpenLogs_Click(object sender, RoutedEventArgs e)

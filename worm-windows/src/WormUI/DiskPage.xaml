@@ -1,0 +1,220 @@
+<Page x:Class="Worm.UI.DiskPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Disk"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,12,0,0">
+
+                <!-- ============================ Capacity gauge ============================ -->
+                <Border Style="{StaticResource Card}" x:Name="GaugeCard">
+                  <Grid>
+                    <StackPanel x:Name="PanelGauge" Visibility="Collapsed">
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock x:Name="TxtUsedBytes" Style="{StaticResource ValueText}"
+                                           FontSize="32" Text="0 B"/>
+                                <TextBlock x:Name="TxtUsedOf" Style="{StaticResource BodyText}" Text=""/>
+                            </StackPanel>
+                            <StackPanel HorizontalAlignment="Right">
+                                <TextBlock x:Name="TxtFreeBytes"
+                                           FontSize="20" FontWeight="SemiBold"
+                                           FontFamily="{StaticResource FontMono}"
+                                           Foreground="{StaticResource Accent}"
+                                           HorizontalAlignment="Right" Text="0 B"/>
+                                <TextBlock Text="available" Style="{StaticResource Subtitle}"
+                                           HorizontalAlignment="Right"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <ProgressBar x:Name="BarUsed" Height="10" Margin="0,14,0,0"
+                                     Minimum="0" Maximum="100"
+                                     Style="{StaticResource WormProgressBar}"/>
+
+                        <Grid Margin="0,10,0,0">
+                            <TextBlock x:Name="TxtPercent" Style="{StaticResource BodyText}"
+                                       FontWeight="SemiBold" Text="0% used"/>
+                            <TextBlock x:Name="TxtGaugeNote" Style="{StaticResource BodyText}"
+                                       HorizontalAlignment="Right" Text="healthy"/>
+                        </Grid>
+
+                        <!-- Per-volume breakdown -->
+                        <ItemsControl x:Name="VolumeList" Margin="0,14,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="110"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}"
+                                                   Style="{StaticResource BodyText}"
+                                                   FontWeight="SemiBold"/>
+                                        <ProgressBar Grid.Column="1" Height="7"
+                                                     Minimum="0" Maximum="100"
+                                                     Value="{Binding UsedPercent}"
+                                                     Style="{StaticResource WormProgressBar}"
+                                                     VerticalAlignment="Center"
+                                                     Margin="8,0"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Detail}"
+                                                   Style="{StaticResource Subtitle}"
+                                                   HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <StackPanel x:Name="PanelGaugeLoading">
+                        <ProgressBar IsIndeterminate="True" Width="160"
+                                     Style="{StaticResource WormProgressBar}"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+
+                <!-- ============================ Biggest folders ============================ -->
+                <TextBlock Text="Biggest Folders" Margin="0,24,0,4"
+                           Style="{StaticResource SectionTitle}" FontSize="14"/>
+                <TextBlock Style="{StaticResource Subtitle}"
+                           Text="One level into your profile. Click a row to open it."/>
+
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0" Padding="4">
+                    <Grid>
+                        <StackPanel x:Name="PanelFoldersLoading" Visibility="Collapsed"
+                                    Margin="10">
+                            <ProgressBar IsIndeterminate="True" Width="160"
+                                         Style="{StaticResource WormProgressBar}"/>
+                            <TextBlock Text="Measuring your profile…"
+                                       Style="{StaticResource Subtitle}" Margin="0,10,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="TxtFoldersEmpty" Visibility="Collapsed"
+                                   Style="{StaticResource Placeholder}"
+                                   Text="Nothing large enough to list."/>
+
+                        <ItemsControl x:Name="FolderList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="Transparent" Padding="10,7"
+                                            MouseLeftButtonUp="FolderRow_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}" FontSize="13"
+                                                           FontWeight="Medium"
+                                                           Foreground="{StaticResource Ink}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Path}" FontSize="10"
+                                                           Foreground="{StaticResource InkTertiary}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           TextWrapping="NoWrap"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding FormattedSize}"
+                                                       FontSize="14" FontWeight="SemiBold"
+                                                       FontFamily="{StaticResource FontMono}"
+                                                       Foreground="{StaticResource Ink}"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+
+                <!-- ============================== Large files ============================== -->
+                <Grid Margin="0,24,0,4">
+                    <StackPanel>
+                        <TextBlock Text="Large Files" Style="{StaticResource SectionTitle}" FontSize="14"/>
+                        <TextBlock Style="{StaticResource Subtitle}"
+                                   Text="Read-only. Nothing here is deleted from this screen."/>
+                    </StackPanel>
+                    <ComboBox x:Name="CmbThreshold" Width="130" SelectedIndex="1"
+                              HorizontalAlignment="Right" VerticalAlignment="Center"
+                              SelectionChanged="CmbThreshold_SelectionChanged">
+                        <ComboBoxItem Content="Over 100 MB" Tag="100"/>
+                        <ComboBoxItem Content="Over 500 MB" Tag="500"/>
+                        <ComboBoxItem Content="Over 1 GB" Tag="1024"/>
+                        <ComboBoxItem Content="Over 5 GB" Tag="5120"/>
+                    </ComboBox>
+                </Grid>
+
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0" Padding="4">
+                    <Grid>
+                        <StackPanel x:Name="PanelFilesLoading" Visibility="Collapsed" Margin="10">
+                            <ProgressBar IsIndeterminate="True" Width="160"
+                                         Style="{StaticResource WormProgressBar}"/>
+                            <TextBlock Text="Searching for large files…"
+                                       Style="{StaticResource Subtitle}" Margin="0,10,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="TxtFilesEmpty" Visibility="Collapsed"
+                                   Style="{StaticResource Placeholder}"
+                                   Text="No files above that size outside your caches."/>
+
+                        <ItemsControl x:Name="FileList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="Transparent" Padding="10,6"
+                                            MouseLeftButtonUp="FileRow_Click">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding Name}" FontSize="13"
+                                                           FontWeight="Medium"
+                                                           Foreground="{StaticResource Ink}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Parent}" FontSize="10"
+                                                           Foreground="{StaticResource InkTertiary}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           TextWrapping="NoWrap"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding FormattedSize}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           FontFamily="{StaticResource FontMono}"
+                                                           Foreground="{StaticResource Ink}"
+                                                           HorizontalAlignment="Right"/>
+                                                <TextBlock Text="{Binding Age}" FontSize="10"
+                                                           Foreground="{StaticResource InkTertiary}"
+                                                           HorizontalAlignment="Right"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Header row -->
+        <Grid Grid.Row="0">
+            <StackPanel>
+                <TextBlock Text="Disk" Style="{StaticResource SectionTitle}" FontSize="15"/>
+                <TextBlock x:Name="TxtHeader" Style="{StaticResource Subtitle}"
+                           Text="Volume capacity, the folders taking the most space, and files worth knowing about."/>
+            </StackPanel>
+            <Button x:Name="BtnRefresh" Content="Rescan" Click="BtnRefresh_Click"
+                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Style="{StaticResource WormButton}"/>
+        </Grid>
+    </Grid>
+</Page>

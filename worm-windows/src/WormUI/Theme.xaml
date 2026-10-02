@@ -1,0 +1,229 @@
+<!--
+    Worm design tokens, ported from Sources/Worm/Theme.swift.
+
+    The macOS original defines colours as sRGB triples; the hex values here are
+    those triples rounded to 8-bit. Radii are named, and the de facto spacing
+    and typography scales were reverse-engineered from the Swift views because
+    the original inlines them as literals at each call site.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================ Base palette -->
+    <Color x:Key="LoamBackgroundColor">#151311</Color>
+    <Color x:Key="LoamSurfaceColor">#201D1A</Color>
+    <Color x:Key="LoamSurfaceRaisedColor">#2A2622</Color>
+
+    <SolidColorBrush x:Key="LoamBackground" Color="{StaticResource LoamBackgroundColor}"/>
+    <SolidColorBrush x:Key="LoamSurface" Color="{StaticResource LoamSurfaceColor}"/>
+    <SolidColorBrush x:Key="LoamSurfaceRaised" Color="{StaticResource LoamSurfaceRaisedColor}"/>
+
+    <!-- ======================================================== Semantic surfaces -->
+    <SolidColorBrush x:Key="SurfaceGlass" Color="#241F1C" Opacity="0.72"/>
+    <SolidColorBrush x:Key="Hairline" Color="#FFFFFF" Opacity="0.11"/>
+    <SolidColorBrush x:Key="HairlineSoft" Color="#FFFFFF" Opacity="0.06"/>
+
+    <!-- =================================================================== Ink -->
+    <SolidColorBrush x:Key="Ink" Color="#F2EDE8"/>
+    <SolidColorBrush x:Key="InkSecondary" Color="#B8B0A8"/>
+    <SolidColorBrush x:Key="InkTertiary" Color="#857D75"/>
+
+    <!-- ================================================================= Accent -->
+    <Color x:Key="InkColor">#F2EDE8</Color>
+    <Color x:Key="InkTertiaryColor">#857D75</Color>
+    <Color x:Key="AccentColor">#C26B47</Color>
+
+    <SolidColorBrush x:Key="Accent" Color="#C26B47"/>
+    <SolidColorBrush x:Key="AccentSoft" Color="#59382B" Opacity="0.45"/>
+
+    <!-- ================================================================= Status -->
+    <SolidColorBrush x:Key="Warn" Color="#E0942E"/>
+    <SolidColorBrush x:Key="WarnSoft" Color="#5C471F" Opacity="0.45"/>
+    <SolidColorBrush x:Key="Danger" Color="#E05247"/>
+    <SolidColorBrush x:Key="DangerSoft" Color="#662E29" Opacity="0.45"/>
+    <SolidColorBrush x:Key="Info" Color="#528FCC"/>
+    <SolidColorBrush x:Key="InfoSoft" Color="#294261" Opacity="0.45"/>
+    <SolidColorBrush x:Key="Good" Color="#59C78C"/>
+    <SolidColorBrush x:Key="GoodSoft" Color="#33734D" Opacity="0.35"/>
+
+    <!-- ======================================================= Per-tab accents -->
+    <SolidColorBrush x:Key="TabClean"     Color="#C26B47"/>
+    <SolidColorBrush x:Key="TabLeftovers" Color="#D17A38"/>
+    <SolidColorBrush x:Key="TabApps"      Color="#AD7085"/>
+    <SolidColorBrush x:Key="TabDisk"      Color="#73946B"/>
+    <SolidColorBrush x:Key="TabStatus"    Color="#6194AD"/>
+    <SolidColorBrush x:Key="TabSettings"  Color="#9E856B"/>
+
+    <!-- =================================================== Telemetry card tints -->
+    <SolidColorBrush x:Key="TintHealth"  Color="#59C78C"/>
+    <SolidColorBrush x:Key="TintCpu"     Color="#66C799"/>
+    <SolidColorBrush x:Key="TintGpu"     Color="#E69E52"/>
+    <SolidColorBrush x:Key="TintMemory"  Color="#D9BF66"/>
+    <SolidColorBrush x:Key="TintBattery" Color="#59BF99"/>
+    <SolidColorBrush x:Key="TintDisk"    Color="#73A6D9"/>
+    <SolidColorBrush x:Key="TintNetwork" Color="#61ADD9"/>
+    <SolidColorBrush x:Key="TintFan"     Color="#D9A666"/>
+    <SolidColorBrush x:Key="TintHot"     Color="#F0A647"/>
+    <SolidColorBrush x:Key="FanAuto"     Color="#855938"/>
+
+    <!-- ================================================================= Radius -->
+    <CornerRadius x:Key="RadiusSmall">3</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">5</CornerRadius>
+    <CornerRadius x:Key="Radius">8</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+
+    <!-- ============================================================== Typography -->
+    <!--
+      Font sizes are literals rather than x:Double resources. The usual
+      "clr-namespace:System;assembly=mscorlib" trick for typed doubles is not
+      dependable on .NET Core WPF, and a literal cannot fail to resolve.
+    -->
+    <FontFamily x:Key="FontDefault">Segoe UI</FontFamily>
+    <FontFamily x:Key="FontMono">Consolas</FontFamily>
+
+    <!-- =============================================================== Spacing -->
+    <Thickness x:Key="SpaceTight">4</Thickness>
+    <Thickness x:Key="SpaceSmall">8</Thickness>
+    <Thickness x:Key="SpaceMedium">12</Thickness>
+    <Thickness x:Key="SpaceLarge">16</Thickness>
+    <Thickness x:Key="SpacePage">18</Thickness>
+
+    <!-- ============================================== Shared control styling -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource LoamSurface}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}"/>
+        <Setter Property="Padding" Value="14"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Hairline}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="SectionTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+        <!-- Text formatting mode is Display rather than WPF's Ideal default.
+             Ideal keeps a far larger glyph cache and produced
+             OutOfMemoryException in FullTextLine.DrawTextLine during this
+             window's first layout. -->
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+    </Style>
+
+    <Style x:Key="Subtitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="Foreground" Value="{StaticResource InkTertiary}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style x:Key="BodyText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{StaticResource InkSecondary}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style x:Key="ValueText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+        <Setter Property="FontFamily" Value="{StaticResource FontMono}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <!-- Buttons. FocusVisualStyle is cleared because the macOS original removes
+         AppKit focus rings recursively; leaving WPF's dotted rectangle on every
+         control would look unfinished next to the blurred chrome. -->
+    <Style x:Key="WormButton" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource LoamSurfaceRaised}"/>
+        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+        <Setter Property="Padding" Value="14,6"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Hairline}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource Radius}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.88"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                            <Setter Property="Foreground" Value="{StaticResource InkTertiary}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource WormButton}">
+        <Setter Property="Background" Value="{StaticResource Accent}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+    </Style>
+
+    <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource WormButton}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style x:Key="WormDataGrid" TargetType="DataGrid">
+        <Setter Property="AutoGenerateColumns" Value="False"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="RowBackground" Value="Transparent"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="#2A2622"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="SelectionUnit" Value="FullRow"/>
+        <Setter Property="CanUserAddRows" Value="False"/>
+        <Setter Property="CanUserDeleteRows" Value="False"/>
+        <Setter Property="CanUserReorderColumns" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="EnableRowVirtualization" Value="True"/>
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+        <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+    </Style>
+
+    <Style x:Key="WormProgressBar" TargetType="ProgressBar">
+        <Setter Property="Background" Value="{StaticResource LoamSurfaceRaised}"/>
+        <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Height" Value="6"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    </Style>
+
+    <!-- ============================================ Legacy aliases ============
+         The first Windows build named its brushes WormIvoryText and friends.
+         LeftoversPage and SettingsPage still reference them, so they are aliased
+         onto the new tokens rather than left dangling, which would throw while
+         loading BAML and take the whole window down. -->
+    <SolidColorBrush x:Key="WormIvoryText" Color="{StaticResource InkColor}"/>
+    <SolidColorBrush x:Key="WormMutedText" Color="{StaticResource InkTertiaryColor}"/>
+    <SolidColorBrush x:Key="WormLoamSurface" Color="{StaticResource LoamSurfaceColor}"/>
+    <SolidColorBrush x:Key="WormTerracottaAccent" Color="{StaticResource AccentColor}"/>
+
+    <!-- Empty / loading placeholder shown while a scan or analysis runs. -->
+    <Style x:Key="Placeholder" TargetType="TextBlock" BasedOn="{StaticResource Subtitle}">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{StaticResource InkSecondary}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+</ResourceDictionary>

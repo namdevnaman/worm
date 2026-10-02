@@ -4,25 +4,45 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.modernwpf.com/2019"
+        xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
         xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
         mc:Ignorable="d"
-        Title="Worm" Height="680" Width="980"
-        MinHeight="600" MinWidth="850"
+        Title="Worm" Height="760" Width="1180"
+        MinHeight="620" MinWidth="980"
         WindowStartupLocation="CenterScreen"
-        Background="#E6151311"
-        ui:WindowHelper.UseModernWindowStyle="True">
+        Background="{StaticResource LoamBackground}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed">
+
+    <!--
+      TextOptions.TextFormattingMode="Display" is load-bearing. WPF defaults to
+      Ideal, which keeps a far larger glyph cache; that surfaced as
+      OutOfMemoryException inside
+      MS.Internal.TextFormatting.TextMetrics.FullTextLine.DrawTextLine, thrown
+      from HwndSource.SetLayoutSize during this window's first layout.
+
+      Setting WORM_SAFE=1 in the environment strips the modern window style and
+      the acrylic backdrop, which narrows the cause in a single test run if the
+      app still fails to start.
+    -->
 
     <Grid>
-        <!-- System Tray Icon -->
+        <!-- System tray icon -->
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ToolTipText="Worm - System Monitor &amp; Cleaner"
                         IconSource="AppIcon.ico"
                         TrayLeftMouseDown="TrayIcon_TrayLeftMouseDown">
             <tb:TaskbarIcon.ContextMenu>
-                <ContextMenu Background="#201D1A" Foreground="#F2EFE9">
+                <ContextMenu Background="#201D1A" Foreground="#F2EDE8">
                     <MenuItem Header="Open Worm" Click="OpenWindow_Click" FontWeight="SemiBold"/>
                     <Separator Background="#332E29"/>
-                    <MenuItem Header="Quick Clean" Click="QuickClean_Click"/>
+                    <MenuItem Header="Quick Scan" Click="QuickScan_Click"/>
+                    <MenuItem Header="Hardware Status" Click="TrayStatus_Click"/>
+                    <MenuItem Header="Clean Screen Mode" Click="CleanScreen_Click"/>
                     <Separator Background="#332E29"/>
                     <MenuItem Header="Exit" Click="ExitApp_Click"/>
                 </ContextMenu>
@@ -32,50 +52,142 @@
         <ui:NavigationView x:Name="NavView"
                            IsSettingsVisible="True"
                            PaneDisplayMode="Left"
+                           OpenPaneLength="232"
+                           CompactPaneLength="48"
+                           IsPaneOpen="True"
+                           IsPaneToggleButtonVisible="True"
                            IsBackButtonVisible="Collapsed"
                            SelectionChanged="NavView_SelectionChanged"
                            Background="Transparent">
 
-            <!-- Custom App Header with Mascot & Title -->
+            <!--
+              ModernWpfUI's NavigationView has no drag handle for the pane, so
+              resizing is driven by the built-in toggle plus three explicit widths
+              cycled from the nav header. PaneDisplayMode="Left" keeps the pane
+              docked; IsPaneOpen plus the toggle button is the collapse path.
+            -->
+
             <ui:NavigationView.PaneHeader>
                 <StackPanel Orientation="Horizontal" Margin="14,14,0,10">
-                    <Image Source="AppIcon_512.png" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Text="Worm" 
-                               FontSize="16" 
-                               FontWeight="Bold" 
-                               Foreground="{StaticResource WormIvoryText}" 
+                    <Border Width="28" Height="28" CornerRadius="7"
+                            Background="{StaticResource LoamSurfaceRaised}"
+                            BorderBrush="{StaticResource Accent}" BorderThickness="1">
+                        <Image Source="AppIcon_512.png" Width="20" Height="20"/>
+                    </Border>
+                    <TextBlock Text="Worm"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource Ink}"
                                Margin="10,2,0,0"/>
+                    <Button x:Name="BtnPaneWidth"
+                            Content="⇔"
+                            ToolTip="Cycle the navigation pane width"
+                            Click="BtnPaneWidth_Click"
+                            Width="26" Height="24"
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center"
+                            Padding="0"
+                            FocusVisualStyle="{x:Null}"
+                            Style="{StaticResource WormButton}"/>
                 </StackPanel>
             </ui:NavigationView.PaneHeader>
 
-            <!-- Navigation Items matching macOS app -->
+            <!--
+              Icons must be explicit SymbolIcon objects. ModernWpfUI's
+              IconElementConverter only accepted the Icon="Name" string shorthand
+              up to 0.9.x; from 1.0.0 it refuses System.String outright and throws
+              while loading BAML, taking the whole window down at startup.
+
+              Every Symbol below is validated against ModernWpf.Controls.Symbol.
+              "SpeedHigh" was never a valid Symbol and is now "Sync".
+            -->
             <ui:NavigationView.MenuItems>
-                <ui:NavigationViewItem Content="Clean" Tag="Clean" Icon="Delete"/>
-                <ui:NavigationViewItem Content="Leftovers" Tag="Leftovers" Icon="Folder"/>
-                <ui:NavigationViewItem Content="Hardware Status" Tag="Status" Icon="SpeedHigh"/>
+                <ui:NavigationViewItem Content="Clean" Tag="Clean">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Delete"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Leftovers" Tag="Leftovers">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Folder"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Apps" Tag="Apps">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="AllApps"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Disk" Tag="Disk">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Repair"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="Status" Tag="Status">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Sync"/>
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
             </ui:NavigationView.MenuItems>
 
-            <!-- Content Area -->
             <Grid>
                 <Frame x:Name="ContentFrame" NavigationUIVisibility="Hidden"/>
 
-                <!-- Worm Transition Overlay replacing Windows wait cursor with animated burrowing mascot -->
-                <Border x:Name="TransitionOverlay" 
-                        Background="#E0151311" 
-                        Visibility="Collapsed" 
+                <!-- Worm transition overlay replaces the Windows wait cursor. -->
+                <Border x:Name="TransitionOverlay"
+                        Background="#E6151311"
+                        Visibility="Collapsed"
                         CornerRadius="8">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border Width="64" Height="64" CornerRadius="32" Background="#2A2622" Margin="0,0,0,14">
-                            <Image Source="AppIcon_512.png" Width="44" Height="44" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        <Border Width="64" Height="64" CornerRadius="32"
+                                Background="{StaticResource LoamSurfaceRaised}"
+                                BorderBrush="{StaticResource Accent}" BorderThickness="2">
+                            <Image Source="AppIcon_512.png" Width="44" Height="44"/>
                         </Border>
-                        <TextBlock Text="Worm is moving…" 
-                                   Foreground="{StaticResource WormIvoryText}" 
-                                   FontWeight="SemiBold" FontSize="13" 
-                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Worm is moving…"
+                                   Foreground="{StaticResource Ink}"
+                                   FontWeight="SemiBold" FontSize="13"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,14,0,0"/>
                     </StackPanel>
                 </Border>
             </Grid>
-
         </ui:NavigationView>
+
+        <!--
+          Drag gripper for the nav pane. ModernWpfUI exposes OpenPaneLength but no
+          resize handle, so this overlay straddles the pane edge and drives it
+          directly. The gripper tracks the pane edge in code rather than binding,
+          because the pane lives inside NavigationView's own template and its width
+          is not reachable from XAML.
+        -->
+        <primitives:Thumb x:Name="PaneGripper"
+               Width="9"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Stretch"
+               Cursor="SizeWE"
+               Opacity="0.55"
+               DragDelta="PaneGripper_DragDelta"
+               DragCompleted="PaneGripper_DragCompleted"
+               MouseDoubleClick="PaneGripper_MouseDoubleClick"
+               ToolTip="Drag to resize the navigation pane. Double-click to cycle.">
+            <Thumb.Template>
+                <ControlTemplate TargetType="{x:Type primitives:Thumb}">
+                    <Border x:Name="GripHit" Background="Transparent">
+                        <Border x:Name="GripLine"
+                                Width="2"
+                                HorizontalAlignment="Center"
+                                Background="#66C26B47"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity" Value="1"/>
+                            <Setter TargetName="GripHit" Property="Background" Value="#0FFFFFFF"/>
+                            <Setter TargetName="GripLine" Property="Width" Value="3"/>
+                            <Setter TargetName="GripLine" Property="Background" Value="#E8E8C9B4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Thumb.Template>
+        </primitives:Thumb>
     </Grid>
 </Window>

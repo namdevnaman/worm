@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="Resources/worm_social_preview.png" alt="Worm: free open-source Mac and Windows cleaner, app uninstaller and system monitor" width="100%">
+<img src="Resources/worm_social_preview.png" alt="Worm Cleaner: free open-source MacBook and Windows cleaner, app uninstaller and system monitor" width="100%">
 
 
-# Worm: Free, Open-Source Mac & Windows Cleaner
+# Worm Cleaner: Free, Open-Source MacBook & Windows Cleaner
 
 
-**Clean developer caches, uninstall apps completely, and monitor your hardware. Native, transparent, and zero telemetry.**
+**Worm Cleaner is a free disk cleaner, app uninstaller and system monitor for MacBook and Windows. Clear developer caches, remove leftovers, and watch your hardware. Native, transparent, and zero telemetry.**
 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -18,29 +18,33 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/namdevnaman/worm/pulls)
 
 
-[**Download**](#download-worm) · [**Features**](#features) · [**How it compares**](#worm-vs-commercial-cleaners) · [**FAQ**](#faq) · [**Setup guide**](SETUP.md)
+[**Download**](#download-worm-cleaner) · [**Features**](#features) · [**How it compares**](#worm-vs-commercial-cleaners) · [**FAQ**](#faq) · [**Setup guide**](SETUP.md)
 
 
 </div>
 
 ---
 
-## What is Worm?
+## What is Worm Cleaner?
 
-**Worm is a free, open-source disk cleaner, app uninstaller and system monitor for macOS and Windows.** It frees up storage by removing developer caches (Xcode DerivedData, npm, Homebrew, Cargo, Gradle and more), browser caches, and the leftover files that uninstalled apps leave behind. It also shows live CPU, memory, disk and thermal stats from your menu bar (macOS) or system tray (Windows).
+**Worm Cleaner is a free, open-source disk cleaner, app uninstaller and system monitor for MacBook and Windows.** It frees up storage by removing developer caches (Xcode DerivedData, npm, Homebrew, Cargo, Gradle and more), browser caches, and the leftover files that uninstalled apps leave behind. It also shows live CPU, memory, disk and thermal stats from your menu bar (macOS) or system tray (Windows).
 
-Worm is built as a transparent alternative to subscription cleaners such as CleanMyMac and CCleaner:
+A MacBook with a few years of development on it can quietly lose tens of gigabytes to `DerivedData`, package manager caches and orphaned app data. Worm Cleaner finds that space, shows you exactly what it found, and deletes only what you tick.
+
+Worm Cleaner is built as a transparent alternative to subscription cleaners such as CleanMyMac and CCleaner:
 
 - **Free forever.** MIT licensed, no subscription, no upsell.
 - **No telemetry.** It runs fully offline and sends nothing anywhere.
 - **Native and lightweight.** Swift 6 + SwiftUI on macOS, .NET 9 on Windows. No Electron.
 - **Safe by default.** You review every item before deletion, and personal folders are protected.
 
-> **Who is it for?** Developers whose Mac is full of Xcode and package manager caches, and anyone who wants a cleaner they can audit instead of trusting a black box.
+> **Who is it for?** Developers whose MacBook is full of Xcode and package manager caches, and anyone who wants a cleaner they can audit instead of trusting a black box.
+>
+> **Also known as:** a MacBook cleaner, a Mac cache cleaner, a Windows junk file remover, an app uninstaller, and a disk space analyser.
 
 ---
 
-## Download Worm
+## Download Worm Cleaner
 
 Latest release: **v1.0.3**
 
@@ -51,8 +55,9 @@ Latest release: **v1.0.3**
 | Windows 10 / 11 (x64) | ZIP | [**Worm-Windows-x64.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-Windows-x64.zip) | Self-contained, no runtime required. Includes `Install-Worm.ps1`. |
 
 > **Windows note:** Worm is not code-signed, so SmartScreen may block it on first
-> launch. Extract the ZIP and run `Install-Worm.ps1` — it removes the Mark-of-the-Web
-> and installs without admin rights. See [Windows: if SmartScreen blocks Worm](#windows-if-smartscreen-blocks-worm).
+> launch. Extract the ZIP and double-click **`Install.cmd`** — it removes the
+> Mark-of-the-Web and installs without admin rights. See
+> [Windows: if SmartScreen blocks Worm](#windows-if-smartscreen-blocks-worm).
 
 See all versions on the [Releases page](https://github.com/namdevnaman/worm/releases).
 
@@ -78,7 +83,7 @@ Dragging an app to the Trash leaves files behind. Worm finds them.
 
 - **Orphan detection** across `~/Library/Application Support`, `Preferences`, `Caches`, `Saved Application State` and `WebKit`.
 - **Positive absence verification.** Worm checks app bundles in system paths and Spotlight to confirm an app is really uninstalled before flagging its files.
-- **Granular review.** Inspect each file's size, creation date and path before deleting.
+- **Granular review.** Every cache target and leftover folder is listed with its size and path, and each one carries its own checkbox. Nothing is deleted unless it is ticked.
 
 ### Menu bar system monitor (macOS)
 
@@ -93,37 +98,79 @@ Dragging an app to the Trash leaves files behind. Worm finds them.
 - Guided **Full Disk Access** setup for macOS privacy (TCC) permissions
 - Every operation is logged locally to `~/Library/Logs/Worm/deletions.tsv`
 
-### Windows cleaner and junk file remover
+### Windows cleaner
 
-- **Temp and system junk:** `%TEMP%`, `C:\Windows\Temp`, memory dump logs
-- **Windows Update leftovers:** old rollback files and `SoftwareDistribution\Download`
-- **Crash dumps:** WER reports, mini-dumps, event trace caches
-- **Recycle Bin:** analysis and cleanup across all volumes via the Win32 Shell API
+66 scan rules across 12 categories, grouped in a sidebar with tri-state
+per-category selection. Every target carries its own checkbox.
 
-### Windows uninstaller leftovers and orphaned app data
+| Category | Examples |
+| --- | --- |
+| **Developer Tools** | npm, pnpm, Yarn, NuGet, pip, Cargo registry, Gradle task-output cache, VS / VS Code / Cursor / JetBrains caches |
+| **App Caches** | Per-application cache folders, Chromium `Code Cache` / `GPUCache`, Explorer thumbnails |
+| **Browsers** | Chrome, Edge, Brave, Firefox, Opera, Vivaldi — across **every** profile, not just `Default` |
+| **Cloud & Office** | OneDrive, Dropbox, Teams |
+| **AI Tools** | Claude Desktop, Codex logs, OpenCode, Copilot |
+| **Apps & Utilities** | Discord, Slack, Teams webview, Spotify, Figma, Unity Hub, Obsidian, Zoom |
+| **Virtualization** | Docker, WSL, Hyper-V, BlueStacks |
+| **User Essentials** | Crash dumps, DirectX shader cache |
+| **System Caches** | `%TEMP%`, `C:\Windows\Temp`, WER archives, Delivery Optimization, Prefetch |
+| **Logs** | User log files, application log folders, pending crash reports |
+| **Recycle Bin** | Measured and emptied across every fixed volume via the Shell API |
+| **Misc** | Minidumps, superseded installers, diagnostic traces |
 
-- Scans `%APPDATA%` and `%LOCALAPPDATA%` for folders left by uninstalled software
-- Cross-checks the Windows Registry uninstall keys (`HKLM` and `HKCU`) so installed apps are never touched
-- Critical Windows components and protected user paths are excluded
+Age gates are applied per rule (7 days for logs and temp, 30 for state). Items go
+to the **Recycle Bin** by default.
+
+> `C:\Windows\SoftwareDistribution` is deliberately **excluded**. Windows owns that
+> tree and its age cannot prove it stays inactive, so it is never cleaned here.
+
+### Windows app uninstaller
+
+- Enumerates installed apps from the `HKLM` and `HKCU` uninstall registry keys — the same list Programs and Features shows.
+- Sort by size or name, filter as you type.
+- Removal runs the app's **own registered uninstaller**, preferring the quiet command. Worm never hand-deletes an install directory, because that leaves a half-uninstalled app.
+- Protected apps — Visual Studio, .NET runtimes and SDKs, Microsoft components — cannot be ticked. Running apps are blocked until quit.
+- Uninstall registry entries marked as system components or update hotfixes are hidden.
+
+### Windows uninstalled-app leftovers
+
+- Scans `%APPDATA%` and `%LOCALAPPDATA%` for folders left by uninstalled software.
+- **Positive absence verification** using token matching against every registered app, plus a second check against each app's install location. This is deliberately not substring matching, which both hid real orphans and flagged live ones.
+- Grouped by app with expand/collapse, tri-state selection and a per-location size breakdown.
+- **Needs review** badges on traces that look like your own data — documents, bookmarks, history, databases. These cannot be ticked silently.
+
+### Windows disk analysis
+
+- Capacity gauge across every fixed volume, with warn at 85% and danger at 92%.
+- Biggest folders one level into your profile, click to open.
+- Large-file finder with adjustable threshold. **Read-only** — it reports, it never deletes.
+
+### Windows system tray
+
+- Left-click the tray icon for a live panel: CPU, memory, free disk, uptime, and total bytes reclaimed.
+- **Reclaimed** is read back from the audit log, so it only ever reports bytes that were actually removed.
 
 ### Windows hardware monitor
 
 - CPU utilization via `GetSystemTimes`
 - RAM usage via `GlobalMemoryStatusEx`
-- Total, free and used space on every mounted NTFS/FAT32 volume
-- System tray icon with quick clean and status
+- Total, free and used space across every mounted NTFS/FAT32/exFAT volume
+- Top processes by working set
+- System facts: edition, build, architecture, cores, uptime
+- Health checks for disk, memory and CPU with OK / Notice / Action needed
 
 ---
 
 ## Safety: how Worm protects your data
 
-1. **Inspect before action.** Every cache entry and leftover is listed before anything is removed.
-2. **Protected paths.** `~/Documents`, `~/Desktop` and other personal folders are never deleted.
-3. **Running processes are protected.**
-4. **Trash first on macOS.** Recoverable by default.
-5. **Registry cross-check on Windows.** Only true orphans are flagged.
-6. **Local audit log.** A permanent record of operations stays on your machine.
-7. **Open source.** Read the code, build it yourself, verify the claims.
+1. **Inspect before action.** Every cache entry and leftover is listed with a per-item checkbox, and cleaning only touches what you ticked.
+2. **Protected paths.** Personal folders are resolved through the Windows known-folder registry keys and the macOS equivalents, so a relocated OneDrive or domain-redirected `Documents` is still protected. Matching is prefix-aware and case-insensitive.
+3. **Running processes warn, they do not silently pass.** A running app's cache is cleanable but flagged. An open file handle is never deleted.
+4. **Trash first on macOS, Recycle Bin first on Windows.** Recoverable by default.
+5. **Registry cross-check on Windows.** Only true orphans are flagged, proven by token matching rather than substring matching.
+6. **Local audit log.** Every destructive operation is appended to `%LOCALAPPDATA%\Worm\Logs\deletions.tsv` (Windows) or `~/Library/Logs/Worm/deletions.tsv` (macOS).
+7. **Blast-radius allowlist.** Every path a rule produces is checked against a cleanable-root set *derived from the rules themselves*, so a wrong rule still cannot delete outside a folder the catalog declares cleanable.
+8. **Open source.** Read the code, build it yourself, verify the claims.
 
 ---
 
@@ -204,6 +251,20 @@ That produces `worm-windows\dist\win-x64\` and a packaged
 ### Is Worm safe to use?
 Yes. Worm lists everything before deletion, protects personal folders and running processes, moves files to the Trash on macOS, and logs every operation locally. The full source is open for review.
 
+### Is Worm malware?
+No. Worm is source code you can read in full, under the MIT licence.
+
+It is not code-signed, and that is the whole reason Windows warns about it. An unsigned binary has no publisher signature, so SmartScreen shows a warning for *any* app that has never been downloaded before — including honest ones. That is the same warning a genuinely malicious tool would trigger, which is why the question is fair.
+
+Four ways to check rather than take our word for it:
+
+1. **Read the code.** Every line is in this repository. The destructive paths are `WindowsReclaimer`, `WindowsSafetyPolicy` and `WindowsRecycleBin` on Windows, and `Reclaimer` and `SafetyPolicy` on macOS.
+2. **Build it yourself** using the instructions above and run your own build. That is the real answer to "can I trust it".
+3. **Watch the network.** Worm makes no outbound connections at all. There is no analytics SDK, no update pings, no crash reporting. On macOS the only network call in the whole app is the optional update check, and it is off until you ask for it.
+4. **Read the audit log.** Every single deletion is appended to a plain-text TSV file on your own machine — `%LOCALAPPDATA%\Worm\Logs\deletions.tsv` on Windows, `~/Library/Logs/Worm/deletions.tsv` on macOS. If a cleaner were doing something you did not ask for, it would be in that file.
+
+If you would rather not run an unsigned binary at all, that is a completely reasonable position and the best answer is to build from source.
+
 ### Is Worm really free?
 Yes. It is MIT licensed with no subscription, ads or paid tier.
 
@@ -256,9 +317,21 @@ macOS protects some app container folders. Without Full Disk Access, Worm cannot
 | | macOS | Windows |
 | --- | --- | --- |
 | **Language** | Swift 6.0 | C# 13 / .NET 9 LTS |
-| **UI** | SwiftUI (macOS 14+) | ModernWpfUI with Mica & Acrylic |
+| **UI** | SwiftUI (macOS 14+) | WPF with ModernWpfUI, Mica & Acrylic |
 | **System access** | Mach kernel APIs, IOKit, libproc | Win32 P/Invoke (`kernel32`, `shell32`, `dwmapi`) |
-| **Build / packaging** | Swift Package Manager, Universal Binary | Self-contained folder, shipped as a ZIP |
+| **Screens** | Clean, Leftovers, Apps, Disk, Status, Settings | Clean, Leftovers, Apps, Disk, Status, Settings |
+| **Scan rules** | 166 | 66 across 12 categories |
+| **Safety refusal reasons** | 23 | 22 |
+| **Tests** | Swift Testing | xUnit, 48 tests over the safety invariants |
+| **Build / packaging** | SwiftPM, Universal Binary | Self-contained folder, shipped as a ZIP |
+
+Windows ships the same six screens as macOS, including **Clean Screen** blackout mode
+(one borderless window per monitor, exit with Esc or a click). The macOS privacy guide
+remains macOS-only.
+
+`Old Windows Installations` is opt-in on both platforms: it must be ticked item by
+item, never selected by its parent category row, because a missed rollback leaves a
+machine unbootable.
 
 ---
 
@@ -286,7 +359,13 @@ Built and maintained by [Naman Namdev](https://github.com/namdevnaman).
 If Worm freed up space on your machine, please **star the repo**. It helps others find it.
 
 <!--
-Search keywords: free mac cleaner, open source mac cleaner, macOS disk cleanup, clear Xcode DerivedData,
-developer cache cleaner, uninstall mac apps completely, remove app leftovers, CleanMyMac alternative,
-CCleaner alternative, Windows junk file cleaner, free up disk space, menu bar system monitor, no telemetry cleaner
+Search keywords: worm cleaner, worm macbook cleaner, macbook cleaner, mac cleaner,
+free mac cleaner, open source mac cleaner, macOS disk cleanup, mac cache cleaner,
+clean my mac alternative, cleanmymac alternative, clear Xcode DerivedData,
+developer cache cleaner, uninstall mac apps completely, remove app leftovers,
+macbook disk space, free up space on macbook, menu bar system monitor,
+worm windows cleaner, windows junk file remover, windows temp file cleaner,
+windows disk cleanup, ccleaner alternative, uninstall apps windows,
+windows app uninstaller, orphaned app data, pc junk cleaner,
+no telemetry cleaner, open source cleaner app, privacy first cleaner
 -->

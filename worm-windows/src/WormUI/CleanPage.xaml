@@ -1,73 +1,206 @@
 <Page x:Class="Worm.UI.CleanPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:ui="http://schemas.modernwpf.com/2019"
-      Title="Clean">
+      xmlns:local="clr-namespace:Worm.UI"
+      Title="Clean"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType">
 
-    <Grid Margin="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250" MinWidth="210" MaxWidth="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="System &amp; Developer Cleanup" 
-                       FontSize="20" FontWeight="SemiBold" 
-                       Foreground="{StaticResource WormIvoryText}"/>
-            <TextBlock Text="Inspect and reclaim gigabytes from system caches, build tools, and package managers." 
-                       FontSize="12" 
-                       Foreground="{StaticResource WormMutedText}" 
-                       Margin="0,4,0,0"/>
-        </StackPanel>
+        <!-- ===================== Category sidebar ===================== -->
+        <Grid Grid.Column="0" Background="{StaticResource LoamBackground}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <!-- Scan Results List -->
-        <Border Grid.Row="1" 
-                Background="{StaticResource WormLoamSurface}" 
-                CornerRadius="8" 
-                Padding="8">
-            <DataGrid x:Name="ItemsGrid" 
-                      AutoGenerateColumns="False" 
-                      IsReadOnly="True"
-                      Background="Transparent" 
-                      BorderThickness="0"
-                      RowBackground="Transparent"
-                      HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#2A2622">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Target Name" Binding="{Binding Rule.Name}" Width="2*"/>
-                    <DataGridTextColumn Header="Category" Binding="{Binding Rule.Category}" Width="1.5*"/>
-                    <DataGridTextColumn Header="Files" Binding="{Binding FileCount}" Width="80"/>
-                    <DataGridTextColumn Header="Size" Binding="{Binding FormattedSize}" Width="100"/>
-                    <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="120"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
-
-        <!-- Bottom Action Bar -->
-        <Border Grid.Row="2" Margin="0,16,0,0" Padding="12" Background="{StaticResource WormLoamSurface}" CornerRadius="8">
-            <Grid>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Total Cleanable: " Foreground="{StaticResource WormMutedText}" FontSize="13"/>
-                    <TextBlock x:Name="TxtTotalSize" Text="0 MB" Foreground="{StaticResource WormTerracottaAccent}" FontWeight="Bold" FontSize="14"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ComboBox x:Name="CmbDeleteMode" SelectedIndex="0" Margin="0,0,12,0" VerticalAlignment="Center">
-                        <ComboBoxItem Content="Move to Recycle Bin"/>
-                        <ComboBoxItem Content="Permanently Delete"/>
-                    </ComboBox>
-
-                    <Button x:Name="BtnScan" Content="Scan System" Click="BtnScan_Click" Margin="0,0,8,0" Padding="14,6"/>
-                    <Button x:Name="BtnClean" Content="Clean Selected" Click="BtnClean_Click" 
-                            Background="{StaticResource WormTerracottaAccent}" 
-                            Foreground="White" 
-                            FontWeight="SemiBold" 
-                            Padding="16,6"/>
-                </StackPanel>
+            <Grid Grid.Row="0" Margin="12,12,8,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Clean" VerticalAlignment="Center"
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource Ink}"/>
+                <Button Grid.Column="1" x:Name="BtnRescan" Content="Scan"
+                        Click="BtnRescan_Click" Style="{StaticResource GhostButton}"
+                        Padding="8,3"/>
             </Grid>
-        </Border>
+
+            <StackPanel Grid.Row="1">
+                <TextBlock x:Name="TxtScanState" Style="{StaticResource Subtitle}"
+                           Margin="12,0,12,8" Text="Scan to find reclaimable space."/>
+                <ProgressBar x:Name="ScanProgress" IsIndeterminate="True" Height="3"
+                             Margin="12,0,12,8" Style="{StaticResource WormProgressBar}"
+                             Visibility="Collapsed"/>
+            </StackPanel>
+
+            <ListBox x:Name="CategoryList" Grid.Row="1" Margin="6,34,6,0"
+                     Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     SelectionChanged="CategoryList_SelectionChanged">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0,1"/>
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border x:Name="Row" CornerRadius="8" Padding="8,5"
+                                Background="Transparent">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Tri-state tick. A plain CheckBox would show a
+                                     stale mark when the row state changed without a
+                                     click; WormCheckBox redraws from IsChecked. -->
+                                <local:WormCheckBox Grid.Column="0"
+                                                    VerticalAlignment="Center" Margin="0,0,4,0"
+                                                    IsChecked="{Binding TriState, Mode=TwoWay}"
+                                                    CheckedChanged="Tri_Changed"
+                                                    Tag="{Binding}"/>
+
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Name}" FontSize="12"
+                                               Foreground="{StaticResource InkSecondary}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="10"
+                                               Foreground="{StaticResource InkTertiary}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" Text="{Binding FormattedSize}"
+                                           FontSize="11" VerticalAlignment="Center"
+                                           FontFamily="{StaticResource FontMono}"
+                                           Foreground="{StaticResource InkSecondary}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Footer: clean button + delete mode -->
+            <StackPanel Grid.Row="2" Margin="8,8,8,10">
+                <Border Height="1" Background="{StaticResource Hairline}" Margin="4,0,4,8"/>
+                <TextBlock x:Name="TxtSelectedTotal" Style="{StaticResource ValueText}"
+                           Text="0 B" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+                <TextBlock Text="selected" Style="{StaticResource Subtitle}"
+                           HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                <Button x:Name="BtnClean" Content="Clean" Click="BtnClean_Click"
+                        Style="{StaticResource PrimaryButton}" IsEnabled="False"
+                        HorizontalAlignment="Stretch" Padding="12,7"/>
+                <ComboBox x:Name="CmbDeleteMode" SelectedIndex="0" Margin="0,8,0,0"
+                          SelectionChanged="CmbDeleteMode_SelectionChanged">
+                    <ComboBoxItem Content="Move to Recycle Bin"/>
+                    <ComboBoxItem Content="Permanently Delete"/>
+                </ComboBox>
+            </StackPanel>
+        </Grid>
+
+        <!-- ===================== Detail pane ===================== -->
+        <Grid Grid.Column="1" Background="{StaticResource LoamSurface}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header + search -->
+            <Grid Grid.Row="0" Margin="12,10,12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock x:Name="TxtDetailTitle" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource Ink}" Text="App Caches"/>
+                    <TextBlock x:Name="TxtDetailSummary" Style="{StaticResource Subtitle}"
+                               Text=""/>
+                </StackPanel>
+                <Button Grid.Column="1" x:Name="BtnSelectAll" Content="Select all"
+                        Click="BtnSelectAll_Click" Style="{StaticResource GhostButton}"
+                        VerticalAlignment="Center"/>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="12,0,12,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtFilter" Grid.Column="0" Margin="0,0,10,0"
+                         Padding="8,5" FontSize="11"
+                         Foreground="{StaticResource Ink}"
+                         CaretBrush="{StaticResource Accent}"
+                         Background="{StaticResource LoamBackground}"
+                         BorderBrush="{StaticResource Hairline}" BorderThickness="1"
+                         TextChanged="TxtFilter_TextChanged"/>
+                <CheckBox Grid.Column="1" x:Name="ChkShowBlocked" Content="Show kept"
+                          VerticalAlignment="Center" Foreground="{StaticResource InkSecondary}"
+                          FontSize="10" Checked="ChkShowBlocked_Changed"
+                          Unchecked="ChkShowBlocked_Changed"/>
+            </Grid>
+
+            <!-- States -->
+            <Grid Grid.Row="2">
+                <StackPanel x:Name="PanelScanning" Visibility="Collapsed"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MaxWidth="340">
+                    <ProgressBar IsIndeterminate="True" Width="160"
+                                 Style="{StaticResource WormProgressBar}"/>
+                    <TextBlock Text="Worm is measuring your system…"
+                               Style="{StaticResource SectionTitle}"
+                               HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                    <TextBlock x:Name="TxtScanProgress"
+                               Style="{StaticResource Subtitle}"
+                               HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel x:Name="PanelEmpty" Visibility="Visible"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            MaxWidth="320">
+                    <TextBlock x:Name="TxtEmptyTitle" Style="{StaticResource SectionTitle}"
+                               HorizontalAlignment="Center" Text="Nothing here yet"/>
+                    <TextBlock x:Name="TxtEmptyBody" Style="{StaticResource Subtitle}"
+                               HorizontalAlignment="Center" Margin="0,6,0,0"
+                               Text="Run a scan to see what can be reclaimed."/>
+                </StackPanel>
+
+                <Border x:Name="PanelList" Visibility="Collapsed" Margin="12,0,12,12"
+                        Background="{StaticResource LoamSurface}"
+                        CornerRadius="8" Padding="4">
+                    <DataGrid x:Name="ItemsGrid" Style="{StaticResource WormDataGrid}"
+                              IsReadOnly="False">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Clean"
+                                Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                IsReadOnly="False" Width="58"/>
+                            <DataGridTextColumn Header="Target" Binding="{Binding Label}"
+                                IsReadOnly="True" Width="2*"/>
+                            <DataGridTextColumn Header="Path" Binding="{Binding ShortPath}"
+                                IsReadOnly="True" Width="2.2*"/>
+                            <DataGridTextColumn Header="Files" Binding="{Binding FileCount}"
+                                IsReadOnly="True" Width="70"/>
+                            <DataGridTextColumn Header="Size" Binding="{Binding FormattedSize}"
+                                IsReadOnly="True" Width="90"/>
+                            <DataGridTextColumn Header="State" Binding="{Binding StatusText}"
+                                IsReadOnly="True" Width="130"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>

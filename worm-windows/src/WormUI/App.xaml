@@ -6,16 +6,12 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Local design tokens first so they can be overridden by the
+                     ModernWpf theme dictionaries. -->
+                <ResourceDictionary Source="Theme.xaml"/>
                 <ui:ThemeResources />
                 <ui:XamlControlsResources />
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- Warm Loam & Terracotta Worm Color Theme matching macOS -->
-            <SolidColorBrush x:Key="WormLoamBackground" Color="#FF151311" />
-            <SolidColorBrush x:Key="WormLoamSurface" Color="#FF201D1A" />
-            <SolidColorBrush x:Key="WormTerracottaAccent" Color="#FFC26B47" />
-            <SolidColorBrush x:Key="WormIvoryText" Color="#FFF2EFE9" />
-            <SolidColorBrush x:Key="WormMutedText" Color="#FFA39C93" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
