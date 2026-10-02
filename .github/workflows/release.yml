@@ -53,12 +53,83 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore worm-windows/Worm.sln
 
-      - name: Publish Self-Contained Worm.exe (x64)
+      # Self-contained FOLDER build on purpose.
+      # PublishSingleFile + EnableCompressionInSingleFile is what broke v1.0.2:
+      # WPF BAML/.g.resources cannot be reliably read from a compressed bundle,
+      # so the app crashed before drawing a window.
+      - name: Publish self-contained Worm (x64 folder)
+        run: >
+          dotnet publish worm-windows/src/WormUI/WormUI.csproj
+          -c Release -r win-x64 --self-contained true
+          -o worm-windows/dist/win-x64
+
+      - name: Package ZIP, install scripts and checksums
+        shell: pwsh
         run: |
-          dotnet publish worm-windows/src/WormUI/WormUI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o worm-windows/dist/win-x64
-          New-Item -ItemType Directory -Force -Path worm-windows/dist/staged
-          Copy-Item worm-windows/dist/win-x64/Worm.exe -Destination worm-windows/dist/staged/Worm.exe
-          Compress-Archive -Path worm-windows/dist/win-x64/Worm.exe -DestinationPath worm-windows/dist/staged/Worm-Windows-x64.zip
+          & worm-windows/scripts/package.ps1 `
+            -PublishDir worm-windows/dist/win-x64 `
+            -OutDir worm-windows/dist/staged
+
+      - name: Smoke test the published app
+        shell: pwsh
+        run: |
+          $exe = 'worm-windows/dist/win-x64/Worm.exe'
+          if (-not (Test-Path $exe)) { throw "Worm.exe was not produced" }
+
+          $zipPath = 'worm-windows/dist/staged/Worm-Windows-x64.zip'
+          if (-not (Test-Path $zipPath)) { throw "ZIP was not produced" }
+          if (-not (Test-Path 'worm-windows/dist/staged/SHA256SUMS.txt')) { throw "release checksums were not produced" }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $zipPath))
+          try {
+            $names = $zip.Entries.FullName
+            $required = @(
+              'Worm.exe','Worm.dll','WormCore.dll','ModernWpf.dll',
+              'SHA256SUMS.txt','Install.cmd','Install-Worm.ps1',
+              'Uninstall.cmd','Uninstall-Worm.ps1'
+            )
+            foreach ($r in $required) {
+              if ($names -notcontains $r) { throw "ZIP is missing $r" }
+            }
+
+            # The installer verifies Worm.exe against the in-ZIP manifest, so the
+            # manifest must actually exist inside the archive.
+            $entry = $zip.GetEntry('SHA256SUMS.txt')
+            $reader = New-Object System.IO.StreamReader($entry.Open())
+            try { $manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($manifest -notmatch '^[0-9a-f]{64}\s+Worm\.exe') {
+              throw "in-ZIP SHA256SUMS.txt has no Worm.exe entry"
+            }
+            Write-Host "ZIP: $($names.Count) entries; all required files and manifest present."
+          } finally { $zip.Dispose() }
+
+          $zipLen = (Get-Item $zipPath).Length
+          Write-Host ("ZIP size: {0} MB" -f [math]::Round($zipLen / 1MB, 1))
+
+      - name: Validate installer scripts parse
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem worm-windows/scripts -Filter *.ps1 | ForEach-Object {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs -and $errs.Count) {
+              $failed = $true
+              Write-Host "FAIL $($_.Name)"
+              $errs | ForEach-Object { Write-Host "  line $($_.Extent.StartLineNumber): $($_.Message)" }
+            } else { Write-Host "OK   $($_.Name)" }
+          }
+          if ($failed) { throw "PowerShell syntax errors found" }
+
+      - name: Validate Scoop manifest
+        shell: pwsh
+        run: |
+          $m = Get-Content worm-windows/packaging/scoop/worm.json -Raw | ConvertFrom-Json
+          if (-not $m.version)    { throw "manifest has no version" }
+          if (-not $m.architecture.'64bit'.url) { throw "manifest has no x64 url" }
+          if ($m.bin -notcontains 'Worm.exe') { throw "manifest bin must be Worm.exe" }
+          Write-Host "Scoop manifest OK (version $($m.version))"
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
@@ -101,7 +172,7 @@ jobs:
           files: |
             artifacts/macos/Worm-Installer.dmg
             artifacts/macos/Worm-macOS.zip
-            artifacts/windows/Worm.exe
             artifacts/windows/Worm-Windows-x64.zip
+            artifacts/windows/SHA256SUMS.txt
           fail_on_unmatched_files: false
           generate_release_notes: true

@@ -12,20 +12,34 @@
     <RootNamespace>Worm.UI</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
-    <!-- Professional Single-File Executable Packaging -->
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- Allow cross-building the Windows target from macOS/Linux CI. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!--
+      Packaging: self-contained FOLDER build, shipped as a ZIP.
+      Deliberately NOT PublishSingleFile:
+        * WPF cannot be trimmed, and a single-file bundle hides BAML/.g.resources
+          behind the bundle store, which is a startup-crash vector for WPF.
+        * EnableCompressionInSingleFile made it worse (68 MB, compressed resources).
+        * Uncompressed single-file measured 130 MB, strictly worse than the folder.
+      A plain folder extracts and runs reliably on every Windows 10/11 x64 machine.
+    -->
     <SelfContained>true</SelfContained>
-    <PublishReadyToRun>true</PublishReadyToRun>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    
+
+    <!-- Ship only English satellite resources (drops ~200 locale assemblies). -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>embedded</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
     <!-- Versioning -->
-    <Version>1.0.1</Version>
-    <FileVersion>1.0.1.0</FileVersion>
-    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <Version>1.0.3</Version>
+    <FileVersion>1.0.3.0</FileVersion>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
     <Company>Naman Namdev</Company>
     <Product>Worm for Windows</Product>
-    <Description>Ultra-Fast System Cleaner, Leftover Shredder and Hardware Monitor for Windows</Description>
+    <Description>Free, open-source system cleaner, app uninstaller and hardware monitor for Windows</Description>
+    <Copyright>Copyright (c) 2026 Naman Namdev</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,7 +48,8 @@
 
   <ItemGroup>
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.4" />
-    <PackageReference Include="ModernWpfUI" Version="0.9.6" />
+    <!-- 0.9.6 only ships net5.0-windows assets; 1.0.0-rc.1 ships net8.0-windows and is API-compatible. -->
+    <PackageReference Include="ModernWpfUI" Version="1.0.0-rc.1" />
   </ItemGroup>
 
   <ItemGroup>

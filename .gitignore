@@ -6,3 +6,7 @@ dist/
 mole-src/
 .agents/
 skills-lock.json
+
+# .NET build output
+bin/
+obj/

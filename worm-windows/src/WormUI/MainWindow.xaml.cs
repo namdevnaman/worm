@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using ModernWpf.Controls;
+using Worm.Core;
 
 namespace Worm.UI;
 
@@ -12,9 +13,21 @@ public partial class MainWindow : Window
     private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
     private const int DWMSBT_TRANSIENTWINDOW = 3; // Acrylic / frosted glass
 
+    private bool _quitting;
+
     public MainWindow()
     {
-        InitializeComponent();
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception ex)
+        {
+            // XAML/theme load failure: record it, because otherwise the app just vanishes.
+            WindowsCrashLog.Write("MainWindow.InitializeComponent", ex);
+            throw;
+        }
+
         Loaded += MainWindow_Loaded;
     }
 
@@ -27,41 +40,54 @@ public partial class MainWindow : Window
             int backdropType = DWMSBT_TRANSIENTWINDOW;
             DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            WindowsCrashLog.Write("MainWindow.OnSourceInitialized.Dwm", ex);
+        }
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         // Default to Clean tab
-        NavView.SelectedItem = NavView.MenuItems[0];
+        if (NavView.MenuItems.Count > 0)
+        {
+            NavView.SelectedItem = NavView.MenuItems[0];
+        }
     }
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.IsSettingsSelected)
+        try
         {
-            NavigateWithAnimation(new SettingsPage());
-            return;
-        }
-
-        if (args.SelectedItem is NavigationViewItem item)
-        {
-            switch (item.Tag?.ToString())
+            if (args.IsSettingsSelected)
             {
-                case "Clean":
-                    NavigateWithAnimation(new CleanPage());
-                    break;
-                case "Leftovers":
-                    NavigateWithAnimation(new LeftoversPage());
-                    break;
-                case "Status":
-                    NavigateWithAnimation(new StatusPage());
-                    break;
+                NavigateWithAnimation(new SettingsPage());
+                return;
             }
+
+            if (args.SelectedItem is NavigationViewItem item)
+            {
+                switch (item.Tag?.ToString())
+                {
+                    case "Clean":
+                        NavigateWithAnimation(new CleanPage());
+                        break;
+                    case "Leftovers":
+                        NavigateWithAnimation(new LeftoversPage());
+                        break;
+                    case "Status":
+                        NavigateWithAnimation(new StatusPage());
+                        break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            WindowsCrashLog.Write("NavView_SelectionChanged", ex);
         }
     }
 
-    private void NavigateWithAnimation(object page)
+    private void NavigateWithAnimation(System.Windows.Controls.Page page)
     {
         TransitionOverlay.Visibility = Visibility.Visible;
         var timer = new System.Windows.Threading.DispatcherTimer
@@ -71,8 +97,18 @@ public partial class MainWindow : Window
         timer.Tick += (s, e) =>
         {
             timer.Stop();
-            ContentFrame.Navigate(page);
-            TransitionOverlay.Visibility = Visibility.Collapsed;
+            try
+            {
+                ContentFrame.Navigate(page);
+            }
+            catch (Exception ex)
+            {
+                WindowsCrashLog.Write("NavigateWithAnimation", ex);
+            }
+            finally
+            {
+                TransitionOverlay.Visibility = Visibility.Collapsed;
+            }
         };
         timer.Start();
     }
@@ -90,12 +126,23 @@ public partial class MainWindow : Window
     private void QuickClean_Click(object sender, RoutedEventArgs e)
     {
         ShowAndActivate();
-        NavView.SelectedItem = NavView.MenuItems[0];
+        if (NavView.MenuItems.Count > 0)
+        {
+            NavView.SelectedItem = NavView.MenuItems[0];
+        }
     }
 
     private void ExitApp_Click(object sender, RoutedEventArgs e)
     {
-        TrayIcon.Dispose();
+        _quitting = true;
+        try
+        {
+            TrayIcon.Dispose();
+        }
+        catch (Exception ex)
+        {
+            WindowsCrashLog.Write("ExitApp.TrayIcon.Dispose", ex);
+        }
         Application.Current.Shutdown();
     }
 
@@ -108,8 +155,26 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        // Minimize to tray on close
-        e.Cancel = true;
-        Hide();
+        // Minimise to tray on close -- but never trap the user: if there is no tray
+        // icon to come back through (e.g. RDP/Server Core, or icon creation failed),
+        // the window must close normally or the app becomes unkillable.
+        if (_quitting)
+            return;
+
+        try
+        {
+            if (TrayIcon.IsCreated)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            WindowsCrashLog.Write("OnClosing.TrayIcon", ex);
+        }
+
+        _quitting = true;
     }
 }
