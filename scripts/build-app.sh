@@ -17,10 +17,20 @@ APP="$ROOT/dist/$APP_NAME.app"
 echo "▸ Building ($CONFIG)"
 swift build -c "$CONFIG" --product "$APP_NAME"
 
+BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
+SRC_BIN="$BIN_DIR/$APP_NAME"
+if [ ! -f "$SRC_BIN" ]; then
+    SRC_BIN="$ROOT/.build/$CONFIG/$APP_NAME"
+fi
+if [ ! -f "$SRC_BIN" ]; then
+    SRC_BIN="$(find "$ROOT/.build" -type f -name "$APP_NAME" -perm +111 2>/dev/null | grep -v "Intermediates" | head -n 1)"
+fi
+
+echo "▸ Found binary at: $SRC_BIN"
 echo "▸ Assembling bundle"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BUILD_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
+cp "$SRC_BIN" "$APP/Contents/MacOS/$APP_NAME"
 
 # Generated so the plist and the binary cannot disagree about the version.
 cat > "$APP/Contents/Info.plist" <<PLIST
