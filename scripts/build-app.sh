@@ -10,7 +10,17 @@ ROOT="$(pwd)"
 CONFIG="${CONFIG:-release}"
 APP_NAME="Worm"
 BUNDLE_ID="dev.local.worm"
-VERSION="${VERSION:-1.0.1}"
+
+# Bundle version. Previously hardcoded to 1.0.1, which shipped stale versions in
+# Finder's "Get Info" and in the DMG. Prefer the caller's VERSION (CI passes the
+# release tag), then the newest git tag, and only then a literal fallback.
+if [ -z "${VERSION:-}" ]; then
+    VERSION="$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+fi
+if [ -z "${VERSION:-}" ]; then
+    VERSION="1.0.3"
+fi
+
 BUILD_DIR="$ROOT/.build/$CONFIG"
 APP="$ROOT/dist/$APP_NAME.app"
 
