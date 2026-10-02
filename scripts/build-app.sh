@@ -15,15 +15,29 @@ BUILD_DIR="$ROOT/.build/$CONFIG"
 APP="$ROOT/dist/$APP_NAME.app"
 
 echo "▸ Building ($CONFIG)"
-swift build -c "$CONFIG" --product "$APP_NAME"
+swift build -c "$CONFIG" --product "$APP_NAME" 2>&1
 
-BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
-SRC_BIN="$BIN_DIR/$APP_NAME"
-if [ ! -f "$SRC_BIN" ]; then
-    SRC_BIN="$ROOT/.build/$CONFIG/$APP_NAME"
+# Find the compiled binary — SPM places it in different paths depending on
+# whether the Xcode toolchain or command-line tools are active, so we probe
+# the known locations in order and fall back to a recursive find.
+SRC_BIN=""
+for CANDIDATE in \
+    "$ROOT/.build/$CONFIG/$APP_NAME" \
+    "$ROOT/.build/out/Products/$(echo $CONFIG | sed 's/./\U&/')/$APP_NAME" \
+    "$ROOT/.build/apple/Products/$(echo $CONFIG | sed 's/./\U&/')/$APP_NAME" \
+    "$(swift build -c "$CONFIG" --show-bin-path 2>/dev/null)/$APP_NAME"; do
+    if [ -f "$CANDIDATE" ] && [ -x "$CANDIDATE" ]; then
+        SRC_BIN="$CANDIDATE"
+        break
+    fi
+done
+if [ -z "$SRC_BIN" ]; then
+    SRC_BIN="$(find "$ROOT/.build" -type f -name "$APP_NAME" ! -path "*/Intermediates*" ! -path "*-emit-*" 2>/dev/null | head -n 1)"
 fi
-if [ ! -f "$SRC_BIN" ]; then
-    SRC_BIN="$(find "$ROOT/.build" -type f -name "$APP_NAME" -perm +111 2>/dev/null | grep -v "Intermediates" | head -n 1)"
+if [ -z "$SRC_BIN" ] || [ ! -f "$SRC_BIN" ]; then
+    echo "Error: could not locate compiled binary '$APP_NAME' under $ROOT/.build" >&2
+    find "$ROOT/.build" -name "$APP_NAME" 2>/dev/null || true
+    exit 1
 fi
 
 echo "▸ Found binary at: $SRC_BIN"
