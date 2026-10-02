@@ -6,10 +6,28 @@ namespace Worm.UI;
 
 public partial class MainWindow : Window
 {
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+    private const int DWMSBT_TRANSIENTWINDOW = 3; // Acrylic / frosted glass
+
     public MainWindow()
     {
         InitializeComponent();
         Loaded += MainWindow_Loaded;
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        try
+        {
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            int backdropType = DWMSBT_TRANSIENTWINDOW;
+            DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
+        }
+        catch { }
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -22,7 +40,7 @@ public partial class MainWindow : Window
     {
         if (args.IsSettingsSelected)
         {
-            ContentFrame.Navigate(new SettingsPage());
+            NavigateWithAnimation(new SettingsPage());
             return;
         }
 
@@ -31,16 +49,32 @@ public partial class MainWindow : Window
             switch (item.Tag?.ToString())
             {
                 case "Clean":
-                    ContentFrame.Navigate(new CleanPage());
+                    NavigateWithAnimation(new CleanPage());
                     break;
                 case "Leftovers":
-                    ContentFrame.Navigate(new LeftoversPage());
+                    NavigateWithAnimation(new LeftoversPage());
                     break;
                 case "Status":
-                    ContentFrame.Navigate(new StatusPage());
+                    NavigateWithAnimation(new StatusPage());
                     break;
             }
         }
+    }
+
+    private void NavigateWithAnimation(object page)
+    {
+        TransitionOverlay.Visibility = Visibility.Visible;
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(200)
+        };
+        timer.Tick += (s, e) =>
+        {
+            timer.Stop();
+            ContentFrame.Navigate(page);
+            TransitionOverlay.Visibility = Visibility.Collapsed;
+        };
+        timer.Start();
     }
 
     private void TrayIcon_TrayLeftMouseDown(object sender, RoutedEventArgs e)

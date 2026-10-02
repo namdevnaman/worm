@@ -4,12 +4,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.modernwpf.com/2019"
-        xmlns:tb="http://schemas.hardcodet.net/package/2015/wpf/notifyicon"
+        xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
         mc:Ignorable="d"
         Title="Worm" Height="680" Width="980"
         MinHeight="600" MinWidth="850"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource WormLoamBackground}"
+        Background="#E6151311"
         ui:WindowHelper.UseModernWindowStyle="True">
 
     <Grid>
@@ -56,7 +56,25 @@
             </ui:NavigationView.MenuItems>
 
             <!-- Content Area -->
-            <Frame x:Name="ContentFrame" NavigationUIVisibility="Hidden"/>
+            <Grid>
+                <Frame x:Name="ContentFrame" NavigationUIVisibility="Hidden"/>
+
+                <!-- Worm Transition Overlay replacing Windows wait cursor with animated burrowing mascot -->
+                <Border x:Name="TransitionOverlay" 
+                        Background="#E0151311" 
+                        Visibility="Collapsed" 
+                        CornerRadius="8">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border Width="64" Height="64" CornerRadius="32" Background="#2A2622" Margin="0,0,0,14">
+                            <Image Source="AppIcon_512.png" Width="44" Height="44" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
+                        <TextBlock Text="Worm is moving…" 
+                                   Foreground="{StaticResource WormIvoryText}" 
+                                   FontWeight="SemiBold" FontSize="13" 
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
         </ui:NavigationView>
     </Grid>

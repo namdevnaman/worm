@@ -3,17 +3,21 @@
 <img src="Resources/worm_social_preview.png" width="100%" alt="Worm - Fast Transparent macOS Cleaner and Monitor" />
 
 # Worm
-### Ultra-Fast, Transparent System Cleaner, App Uninstaller & Hardware Monitor for macOS
+### Ultra-Fast, Transparent System Cleaner, App Uninstaller & Hardware Monitor for macOS & Windows
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-macOS%2014.0%2B%20%7C%20Apple%20Silicon%20%26%20Intel-black.svg?logo=apple)](https://github.com/namdevnaman/worm)
-[![Release](https://img.shields.io/badge/Release-v1.0.1-green.svg)](https://github.com/namdevnaman/worm/releases)
-[![Swift 6](https://img.shields.io/badge/Swift-6.0-orange.svg?logo=swift)](https://swift.org)
+[![macOS](https://img.shields.io/badge/Platform-macOS%2014.0%2B%20%7C%20Apple%20Silicon%20%26%20Intel-black.svg?logo=apple)](https://github.com/namdevnaman/worm)
+[![Windows](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-0078D6.svg?logo=windows)](worm-windows/)
+[![Release](https://img.shields.io/badge/Release-v1.0.2-green.svg)](https://github.com/namdevnaman/worm/releases)
+[![Swift 6](https://img.shields.io/badge/macOS-Swift%206-orange.svg?logo=swift)](https://swift.org)
+[![.NET 9](https://img.shields.io/badge/Windows-.NET%209%20%2F%20WPF-512BD4.svg?logo=dotnet)](https://dotnet.microsoft.com)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/namdevnaman/worm/pulls)
 
-**Worm** is a modern, lightweight, and open-source system optimizer and disk cleanup companion designed specifically for Apple Silicon (M1, M2, M3, M4) and Intel Macs running macOS 14 Sonoma, macOS 15 Sequoia, and later.
+**Worm** is a modern, lightweight, and open-source system optimizer and disk cleanup companion designed specifically for:
+- **macOS** (Apple Silicon M1/M2/M3/M4 & Intel on macOS 14 Sonoma, macOS 15 Sequoia, and later)
+- **Windows** (Windows 10 version 1809+ & Windows 11 x64)
 
-[**Download Latest Release (v1.0.1)**](https://github.com/namdevnaman/worm/releases/latest) • [**Setup & Installation Guide**](SETUP.md) • [**Contribute**](#contributing)
+[**Download for macOS (DMG)**](https://github.com/namdevnaman/worm/releases/latest) • [**Download for Windows (Worm.exe)**](https://github.com/namdevnaman/worm/releases/latest) • [**Setup Guide**](SETUP.md) • [**Contribute**](#contributing)
 
 </div>
 
@@ -73,29 +77,27 @@ A lightweight system monitor integrated into your macOS menu bar:
 
 ## Installation
 
-### Method 1: Universal Installer (DMG)
-1. Download `Worm-1.0.1.dmg` from the [Releases](https://github.com/namdevnaman/worm/releases/latest) page.
-2. Drag `Worm.app` into your `/Applications` directory.
-3. Open `Worm.app`. If prompted by macOS Gatekeeper:
-   - Navigate to **System Settings → Privacy & Security → Scroll to Security → Click "Open Anyway"**.
-   - Alternatively, remove the quarantine attribute via Terminal:
-     ```bash
-     xattr -cr /Applications/Worm.app
-     ```
-4. Grant **Full Disk Access** in **System Settings → Privacy & Security → Full Disk Access** to enable thorough container inspections.
+### macOS (Universal DMG)
+1. Download `Worm-Installer.dmg` from the [Releases](https://github.com/namdevnaman/worm/releases/latest) page.
+2. Drag `Worm.app` into `/Applications`.
+3. Open `Worm.app`. If prompted by macOS Gatekeeper, click **"Open Anyway"** in **System Settings → Privacy & Security**.
+4. Grant **Full Disk Access** in System Settings to allow thorough container inspections.
 
-### Method 2: Build from Source
-```bash
-# Clone the repository
-git clone https://github.com/namdevnaman/worm.git
-cd worm
+### Windows (Single-File Binary)
+1. Download `Worm-Windows-x64.zip` or `Worm.exe` from the [Releases](https://github.com/namdevnaman/worm/releases/latest) page.
+2. Launch `Worm.exe`. It is fully self-contained with no prerequisites or external runtimes required.
 
-# Build the release bundle
-./scripts/build-app.sh
-
-# Install to /Applications
-./scripts/install.sh
-```
+### Build from Source
+- **macOS:**
+  ```bash
+  git clone https://github.com/namdevnaman/worm.git && cd worm
+  ./scripts/build-app.sh && ./scripts/install.sh
+  ```
+- **Windows:**
+  ```cmd
+  cd worm-windows
+  scripts\build.bat
+  ```
 
 For comprehensive configuration details, see [SETUP.md](SETUP.md).
 

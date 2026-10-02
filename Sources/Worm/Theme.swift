@@ -620,6 +620,46 @@ struct CleanScreenOverlayView: View {
     }
 }
 
+/// Delightful crawling worm animation displayed during window & tab transitions,
+/// completely replacing macOS cursor spinner / hourglass delays with lively brand motion.
+struct WormTransitionOverlay: View {
+    var title: String = "Loading…"
+
+    var body: some View {
+        ZStack {
+            Theme.background.opacity(0.88)
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Theme.surfaceRaised)
+                        .frame(width: 76, height: 76)
+                        .overlay(Circle().strokeBorder(Theme.accent.opacity(0.40), lineWidth: 1.5))
+                        .shadow(color: Theme.accent.opacity(0.20), radius: 10, y: 3)
+
+                    DiggingWormAnimation(size: 60)
+                }
+
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.ink)
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
+                    .fill(Theme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous)
+                            .strokeBorder(Theme.hairline, lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
+            )
+        }
+        .transition(.opacity)
+    }
+}
+
 /// Disables standard AppKit blue focus rings on enclosing controls
 struct WithoutFocusRing: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {

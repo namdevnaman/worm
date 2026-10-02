@@ -99,9 +99,23 @@ struct RootView: View {
     @StateObject private var selection = Box(RootView.Tab.clean)
     /// Dismissible, and re-shown only after a rescan so it does not nag.
     @StateObject private var showAccessNotice = Box(true)
+    @StateObject private var isTransitioning = Box(false)
 
     enum Tab: Hashable {
         case clean, leftovers, apps, disk, status, settings
+    }
+
+    private func triggerSmoothTransition(to target: Tab) {
+        guard target != selection.value else { return }
+        withAnimation(.easeInOut(duration: 0.15)) {
+            isTransitioning.value = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            selection.value = target
+            withAnimation(.easeOut(duration: 0.25)) {
+                isTransitioning.value = false
+            }
+        }
     }
 
     private var currentTabColor: Color {
@@ -134,19 +148,28 @@ struct RootView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
+                    if isTransitioning.value {
+                        WormTransitionOverlay(title: "Worm is moving…")
+                    }
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
         .onReceive(store.$activeTab) { tab in
+            let targetTab: Tab?
             switch tab.lowercased() {
-            case "clean": selection.value = .clean
-            case "leftovers", "optimize": selection.value = .leftovers
-            case "apps", "software": selection.value = .apps
-            case "disk", "analyze": selection.value = .disk
-            case "status": selection.value = .status
-            case "settings": selection.value = .settings
-            default: break
+            case "clean": targetTab = .clean
+            case "leftovers", "optimize": targetTab = .leftovers
+            case "apps", "software": targetTab = .apps
+            case "disk", "analyze": targetTab = .disk
+            case "status": targetTab = .status
+            case "settings": targetTab = .settings
+            default: targetTab = nil
+            }
+            if let t = targetTab, t != selection.value {
+                triggerSmoothTransition(to: t)
             }
         }
         .frame(minWidth: 1000, minHeight: 640)
@@ -191,7 +214,7 @@ struct RootView: View {
         HStack(spacing: 12) {
             // Worm Brandmark Button: Normal click opens Status tab, Right-click (two fingers) shows native actions menu
             Button {
-                selection.value = .status
+                triggerSmoothTransition(to: .status)
                 store.activeTab = "status"
             } label: {
                 HStack(spacing: 7) {
@@ -201,20 +224,21 @@ struct RootView: View {
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Theme.ink)
                 }
-                .padding(.leading, 4)
-                .padding(.trailing, 9)
-                .padding(.vertical, 3)
+                .padding(.leading, 5)
+                .padding(.trailing, 10)
+                .padding(.vertical, 4)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Theme.surface)
+                        .fill(Theme.glassBackground)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(Theme.hairline, lineWidth: 1)
+                        .strokeBorder(Theme.glassBorder, lineWidth: 1)
                 )
             }
-            .buttonStyle(FluidButtonStyle(scale: 0.96))
+            .buttonStyle(.plain)
             .focusable(false)
+            .focusEffectDisabled()
             .background(WithoutFocusRing())
             .fixedSize()
             .help("Click to view Status · Right-click (or two-finger click) for Actions Menu")
@@ -223,7 +247,7 @@ struct RootView: View {
             }
             .padding(.leading, 12)
 
-            // Integrated segmented navigation pill tabs
+            // Integrated segmented navigation pill tabs with frosted glass container
             HStack(spacing: 2) {
                 ForEach([Tab.clean, .leftovers, .apps, .disk, .status, .settings], id: \.self) { tab in
                     tabButton(tab)
@@ -232,11 +256,11 @@ struct RootView: View {
             .padding(3)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Theme.surface)
+                    .fill(Color.black.opacity(0.32))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
+                    .strokeBorder(Theme.glassBorder, lineWidth: 1)
             )
 
             Spacer()
@@ -255,11 +279,14 @@ struct RootView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
+                    .background(Theme.glassBackground, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.glassBorder, lineWidth: 1))
                     .foregroundStyle(Theme.inkSecondary)
                 }
-                .buttonStyle(FluidButtonStyle(scale: 0.95))
+                .buttonStyle(.plain)
+                .focusable(false)
+                .focusEffectDisabled()
+                .background(WithoutFocusRing())
                 .help("Blackout screen for physical cleaning")
 
                 // Keep Screen On Quick Menu
@@ -280,11 +307,11 @@ struct RootView: View {
                     .padding(.vertical, 4)
                     .background(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(KeepScreenOnManager.shared.activeMinutes != nil ? Theme.accent.opacity(0.18) : Theme.surface)
+                            .fill(KeepScreenOnManager.shared.activeMinutes != nil ? Theme.accent.opacity(0.25) : Theme.glassBackground)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .strokeBorder(KeepScreenOnManager.shared.activeMinutes != nil ? Theme.accent : Theme.hairline, lineWidth: 1)
+                            .strokeBorder(KeepScreenOnManager.shared.activeMinutes != nil ? Theme.accent : Theme.glassBorder, lineWidth: 1)
                     )
                     .foregroundStyle(KeepScreenOnManager.shared.activeMinutes != nil ? Theme.accent : Theme.inkSecondary)
                 }
@@ -303,18 +330,23 @@ struct RootView: View {
                 }
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
+                .background(Theme.glassBackground, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Theme.glassBorder, lineWidth: 1))
             }
             .padding(.trailing, 12)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 7)
         .background(
             ZStack {
-                VisualEffectBlur(material: .headerView, blendingMode: .withinWindow)
-                Theme.surface.opacity(0.7)
+                VisualEffectBlur(material: .sidebar, blendingMode: .withinWindow)
+                Theme.darkBackground.opacity(0.35)
             }
         )
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Theme.hairlineSoft)
+                .frame(height: 1)
+        }
     }
 
     private func tabButton(_ tab: Tab) -> some View {
@@ -322,9 +354,7 @@ struct RootView: View {
         let tabColor = Theme.tabAccent(for: title(tab))
 
         return Button {
-            withAnimation(Theme.springBouncy) {
-                selection.value = tab
-            }
+            triggerSmoothTransition(to: tab)
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: symbol(tab))
@@ -338,10 +368,14 @@ struct RootView: View {
             .background(
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(isActive ? tabColor : Color.clear)
+                    .shadow(color: isActive ? tabColor.opacity(0.35) : .clear, radius: 4, y: 1)
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(FluidButtonStyle(scale: 0.96))
+        .buttonStyle(.plain)
+        .focusable(false)
+        .focusEffectDisabled()
+        .background(WithoutFocusRing())
     }
 
     private func title(_ tab: Tab) -> String {

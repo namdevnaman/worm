@@ -19,26 +19,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Swift
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.0"
-
-      - name: Build macOS Application
+      - name: Build macOS Application & DMG
         run: |
           chmod +x ./scripts/build-app.sh ./scripts/create-dmg.sh
           ./scripts/build-app.sh
           ./scripts/create-dmg.sh
           cd dist
           zip -r -X Worm-macOS.zip Worm.app
+          mkdir -p staged
+          cp Worm-Installer.dmg staged/
+          cp Worm-macOS.zip staged/
 
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: worm-macos
-          path: |
-            dist/Worm-Installer.dmg
-            dist/Worm-macOS.zip
+          path: dist/staged/*
 
   # ==========================================
   # Job 2: Build Native Windows Single-File Executable
@@ -59,26 +55,16 @@ jobs:
 
       - name: Publish Self-Contained Worm.exe (x64)
         run: |
-          dotnet publish worm-windows/src/WormUI/WormUI.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:EnableCompressionInSingleFile=true `
-            -o worm-windows/dist/win-x64
-
-      - name: Create Windows ZIP Archive
-        run: |
-          Compress-Archive -Path worm-windows/dist/win-x64/Worm.exe -DestinationPath worm-windows/dist/Worm-Windows-x64.zip
+          dotnet publish worm-windows/src/WormUI/WormUI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o worm-windows/dist/win-x64
+          New-Item -ItemType Directory -Force -Path worm-windows/dist/staged
+          Copy-Item worm-windows/dist/win-x64/Worm.exe -Destination worm-windows/dist/staged/Worm.exe
+          Compress-Archive -Path worm-windows/dist/win-x64/Worm.exe -DestinationPath worm-windows/dist/staged/Worm-Windows-x64.zip
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: worm-windows
-          path: |
-            worm-windows/dist/win-x64/Worm.exe
-            worm-windows/dist/Worm-Windows-x64.zip
+          path: worm-windows/dist/staged/*
 
   # ==========================================
   # Job 3: Automated Multi-Platform GitHub Release
