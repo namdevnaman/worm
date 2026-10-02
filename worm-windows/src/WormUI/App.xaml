@@ -1,0 +1,22 @@
+<Application x:Class="Worm.UI.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:tb="http://schemas.hardcodet.net/package/2015/wpf/notifyicon"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:ThemeResources />
+                <ui:XamlControlsResources />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Warm Loam & Terracotta Worm Color Theme matching macOS -->
+            <SolidColorBrush x:Key="WormLoamBackground" Color="#FF151311" />
+            <SolidColorBrush x:Key="WormLoamSurface" Color="#FF201D1A" />
+            <SolidColorBrush x:Key="WormTerracottaAccent" Color="#FFC26B47" />
+            <SolidColorBrush x:Key="WormIvoryText" Color="#FFF2EFE9" />
+            <SolidColorBrush x:Key="WormMutedText" Color="#FFA39C93" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

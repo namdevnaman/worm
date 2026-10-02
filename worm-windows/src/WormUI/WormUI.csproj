@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <LangVersion>13.0</LangVersion>
+    <ApplicationIcon>..\..\assets\AppIcon.ico</ApplicationIcon>
+    <AssemblyName>Worm</AssemblyName>
+    <RootNamespace>Worm.UI</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Professional Single-File Executable Packaging -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    
+    <!-- Versioning -->
+    <Version>1.0.1</Version>
+    <FileVersion>1.0.1.0</FileVersion>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <Company>Naman Namdev</Company>
+    <Product>Worm for Windows</Product>
+    <Description>Ultra-Fast System Cleaner, Leftover Shredder and Hardware Monitor for Windows</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WormCore\WormCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.4" />
+    <PackageReference Include="ModernWpfUI" Version="0.9.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\assets\AppIcon.ico">
+      <Link>AppIcon.ico</Link>
+    </Resource>
+    <Resource Include="..\..\assets\AppIcon_512.png">
+      <Link>AppIcon_512.png</Link>
+    </Resource>
+  </ItemGroup>
+
+</Project>

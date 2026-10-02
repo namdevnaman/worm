@@ -1,0 +1,73 @@
+<Page x:Class="Worm.UI.CleanPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.modernwpf.com/2019"
+      Title="Clean">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="System &amp; Developer Cleanup" 
+                       FontSize="20" FontWeight="SemiBold" 
+                       Foreground="{StaticResource WormIvoryText}"/>
+            <TextBlock Text="Inspect and reclaim gigabytes from system caches, build tools, and package managers." 
+                       FontSize="12" 
+                       Foreground="{StaticResource WormMutedText}" 
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Scan Results List -->
+        <Border Grid.Row="1" 
+                Background="{StaticResource WormLoamSurface}" 
+                CornerRadius="8" 
+                Padding="8">
+            <DataGrid x:Name="ItemsGrid" 
+                      AutoGenerateColumns="False" 
+                      IsReadOnly="True"
+                      Background="Transparent" 
+                      BorderThickness="0"
+                      RowBackground="Transparent"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#2A2622">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Target Name" Binding="{Binding Rule.Name}" Width="2*"/>
+                    <DataGridTextColumn Header="Category" Binding="{Binding Rule.Category}" Width="1.5*"/>
+                    <DataGridTextColumn Header="Files" Binding="{Binding FileCount}" Width="80"/>
+                    <DataGridTextColumn Header="Size" Binding="{Binding FormattedSize}" Width="100"/>
+                    <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="120"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Bottom Action Bar -->
+        <Border Grid.Row="2" Margin="0,16,0,0" Padding="12" Background="{StaticResource WormLoamSurface}" CornerRadius="8">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Total Cleanable: " Foreground="{StaticResource WormMutedText}" FontSize="13"/>
+                    <TextBlock x:Name="TxtTotalSize" Text="0 MB" Foreground="{StaticResource WormTerracottaAccent}" FontWeight="Bold" FontSize="14"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <ComboBox x:Name="CmbDeleteMode" SelectedIndex="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <ComboBoxItem Content="Move to Recycle Bin"/>
+                        <ComboBoxItem Content="Permanently Delete"/>
+                    </ComboBox>
+
+                    <Button x:Name="BtnScan" Content="Scan System" Click="BtnScan_Click" Margin="0,0,8,0" Padding="14,6"/>
+                    <Button x:Name="BtnClean" Content="Clean Selected" Click="BtnClean_Click" 
+                            Background="{StaticResource WormTerracottaAccent}" 
+                            Foreground="White" 
+                            FontWeight="SemiBold" 
+                            Padding="16,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

@@ -1,0 +1,57 @@
+<Page x:Class="Worm.UI.LeftoversPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Leftovers">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Uninstalled Application Leftovers" 
+                       FontSize="20" FontWeight="SemiBold" 
+                       Foreground="{StaticResource WormIvoryText}"/>
+            <TextBlock Text="Scans AppData and LocalAppData for abandoned folders belonging to uninstalled programs." 
+                       FontSize="12" 
+                       Foreground="{StaticResource WormMutedText}" 
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource WormLoamSurface}" CornerRadius="8" Padding="8">
+            <DataGrid x:Name="OrphansGrid" 
+                      AutoGenerateColumns="False" 
+                      IsReadOnly="True"
+                      Background="Transparent" 
+                      BorderThickness="0"
+                      RowBackground="Transparent"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#2A2622">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Application / Vendor" Binding="{Binding AppName}" Width="2*"/>
+                    <DataGridTextColumn Header="Location Path" Binding="{Binding Path}" Width="3*"/>
+                    <DataGridTextColumn Header="Size" Binding="{Binding FormattedSize}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <Border Grid.Row="2" Margin="0,16,0,0" Padding="12" Background="{StaticResource WormLoamSurface}" CornerRadius="8">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Found Leftovers: " Foreground="{StaticResource WormMutedText}"/>
+                    <TextBlock x:Name="TxtOrphanCount" Text="0 items" Foreground="{StaticResource WormTerracottaAccent}" FontWeight="Bold"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnScanOrphans" Content="Scan Leftovers" Click="BtnScanOrphans_Click" Margin="0,0,8,0" Padding="14,6"/>
+                    <Button x:Name="BtnCleanOrphans" Content="Shred Selected" Click="BtnCleanOrphans_Click" 
+                            Background="{StaticResource WormTerracottaAccent}" 
+                            Foreground="White" FontWeight="SemiBold" Padding="16,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

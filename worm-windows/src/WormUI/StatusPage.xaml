@@ -1,0 +1,58 @@
+<Page x:Class="Worm.UI.StatusPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.modernwpf.com/2019"
+      Title="Hardware Status">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Live System &amp; Hardware Telemetry" 
+                       FontSize="20" FontWeight="SemiBold" 
+                       Foreground="{StaticResource WormIvoryText}"/>
+            <TextBlock Text="Real-time processor utilization, RAM memory pressure, and primary SSD metrics." 
+                       FontSize="12" 
+                       Foreground="{StaticResource WormMutedText}" 
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Metric Cards -->
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,0,0,24">
+
+            <!-- CPU Card -->
+            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="10" Margin="0,0,12,0" Padding="18">
+                <StackPanel>
+                    <TextBlock Text="CPU Utilization" FontSize="13" Foreground="{StaticResource WormMutedText}"/>
+                    <TextBlock x:Name="TxtCpuVal" Text="0.0%" FontSize="32" FontWeight="Bold" Foreground="{StaticResource WormTerracottaAccent}" Margin="0,8,0,0"/>
+                    <ProgressBar x:Name="PbCpu" Height="6" Margin="0,16,0,0" Value="0" Maximum="100" Foreground="{StaticResource WormTerracottaAccent}"/>
+                    <TextBlock x:Name="TxtProcs" Text="Active Processes: 0" FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,12,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- RAM Card -->
+            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="10" Margin="0,0,12,0" Padding="18">
+                <StackPanel>
+                    <TextBlock Text="Memory (RAM)" FontSize="13" Foreground="{StaticResource WormMutedText}"/>
+                    <TextBlock x:Name="TxtRamVal" Text="0.0%" FontSize="32" FontWeight="Bold" Foreground="#4A90E2" Margin="0,8,0,0"/>
+                    <ProgressBar x:Name="PbRam" Height="6" Margin="0,16,0,0" Value="0" Maximum="100" Foreground="#4A90E2"/>
+                    <TextBlock x:Name="TxtRamDetail" Text="0 GB / 0 GB Used" FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,12,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Disk Card -->
+            <Border Background="{StaticResource WormLoamSurface}" CornerRadius="10" Padding="18">
+                <StackPanel>
+                    <TextBlock Text="Primary Storage (SSD)" FontSize="13" Foreground="{StaticResource WormMutedText}"/>
+                    <TextBlock x:Name="TxtDiskVal" Text="0.0%" FontSize="32" FontWeight="Bold" Foreground="#50E3C2" Margin="0,8,0,0"/>
+                    <ProgressBar x:Name="PbDisk" Height="6" Margin="0,16,0,0" Value="0" Maximum="100" Foreground="#50E3C2"/>
+                    <TextBlock x:Name="TxtDiskDetail" Text="0 GB / 0 GB Used" FontSize="11" Foreground="{StaticResource WormMutedText}" Margin="0,12,0,0"/>
+                </StackPanel>
+            </Border>
+
+        </UniformGrid>
+    </Grid>
+</Page>

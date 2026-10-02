@@ -1,0 +1,111 @@
+name: Build & Release Multi-Platform Worm (macOS & Windows)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ==========================================
+  # Job 1: Build Native macOS Universal App & DMG
+  # ==========================================
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+
+      - name: Build macOS Application
+        run: |
+          chmod +x ./scripts/build-app.sh ./scripts/create-dmg.sh
+          ./scripts/build-app.sh
+          ./scripts/create-dmg.sh
+          cd dist
+          zip -r -X Worm-macOS.zip Worm.app
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-macos
+          path: |
+            dist/Worm-Installer.dmg
+            dist/Worm-macOS.zip
+
+  # ==========================================
+  # Job 2: Build Native Windows Single-File Executable
+  # ==========================================
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore worm-windows/Worm.sln
+
+      - name: Publish Self-Contained Worm.exe (x64)
+        run: |
+          dotnet publish worm-windows/src/WormUI/WormUI.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -o worm-windows/dist/win-x64
+
+      - name: Create Windows ZIP Archive
+        run: |
+          Compress-Archive -Path worm-windows/dist/win-x64/Worm.exe -DestinationPath worm-windows/dist/Worm-Windows-x64.zip
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-windows
+          path: |
+            worm-windows/dist/win-x64/Worm.exe
+            worm-windows/dist/Worm-Windows-x64.zip
+
+  # ==========================================
+  # Job 3: Automated Multi-Platform GitHub Release
+  # ==========================================
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: worm-macos
+          path: artifacts/macos
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: worm-windows
+          path: artifacts/windows
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            artifacts/macos/Worm-Installer.dmg
+            artifacts/macos/Worm-macOS.zip
+            artifacts/windows/Worm.exe
+            artifacts/windows/Worm-Windows-x64.zip
+          generate_release_notes: true
