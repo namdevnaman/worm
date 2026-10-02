@@ -10,6 +10,8 @@ struct WormApp: App {
             RootView()
                 .environmentObject(store)
                 .tint(Theme.accent)
+                .focusEffectDisabled()
+                .background(WithoutFocusRing())
                 .onAppear {
                     store.mainWindowOpener = {
                         NSApp.setActivationPolicy(.regular)
@@ -316,6 +318,9 @@ struct RootView: View {
                     .foregroundStyle(KeepScreenOnManager.shared.activeMinutes != nil ? Theme.accent : Theme.inkSecondary)
                 }
                 .menuStyle(.borderlessButton)
+                .focusable(false)
+                .focusEffectDisabled()
+                .background(WithoutFocusRing())
                 .fixedSize()
                 .help("Prevent Mac from sleeping")
 

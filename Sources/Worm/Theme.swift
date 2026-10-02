@@ -660,7 +660,7 @@ struct WormTransitionOverlay: View {
     }
 }
 
-/// Disables standard AppKit blue focus rings on enclosing controls
+/// Disables standard AppKit blue focus rings on enclosing controls and subtrees
 struct WithoutFocusRing: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = FocusClearView()
@@ -669,12 +669,19 @@ struct WithoutFocusRing: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         FocusClearView.clearFocusRings(in: nsView.superview)
+        FocusClearView.clearFocusRings(in: nsView.window?.contentView)
     }
 
     final class FocusClearView: NSView {
         override func viewDidMoveToSuperview() {
             super.viewDidMoveToSuperview()
             Self.clearFocusRings(in: superview)
+            Self.clearFocusRings(in: window?.contentView)
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            Self.clearFocusRings(in: window?.contentView)
         }
 
         static func clearFocusRings(in view: NSView?) {
@@ -685,6 +692,7 @@ struct WithoutFocusRing: NSViewRepresentable {
                 if let control = sub as? NSControl {
                     control.focusRingType = .none
                 }
+                clearFocusRings(in: sub)
             }
             if let sup = view.superview {
                 sup.focusRingType = .none
