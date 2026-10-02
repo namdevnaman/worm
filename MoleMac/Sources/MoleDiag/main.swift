@@ -8,6 +8,17 @@ case "ps":
     let s = Date()
     let names = LivenessProbe.runningProcessNames()
     print("runningProcessNames: \(names?.count ?? -1) in \(String(format: "%.2f", Date().timeIntervalSince(s)))s")
+case "metrics":
+    let snap = SystemMetrics.snapshot()
+    print("CPU Temp: \(String(describing: snap.cpuTemperatureCelsius))")
+    print("GPU: \(String(describing: snap.gpu))")
+    print("Fan: \(String(describing: snap.fan))")
+    print("Battery: \(snap.battery)")
+    print("Top CPU (\(snap.topCPU.count)): \(snap.topCPU.prefix(5))")
+    print("Top Mem: \(SystemMetrics.topByMemory(limit: 5))")
+    print("Disk: free=\(snap.disk.freeBytes) total=\(snap.disk.totalBytes)")
+    print("Mem: used=\(snap.memory.usedBytes) total=\(snap.memory.totalBytes)")
+    print("Net: rx=\(snap.networkRate.rx) tx=\(snap.networkRate.tx)")
 case "lsofdir":
     let s = Date()
     let r = LivenessProbe.hasOpenHandle("/Users/namannamdev/Library/Caches")
@@ -51,6 +62,16 @@ case "roots":
         let size = exists ? SizeMeasurer.measure(url.path, timeout: 1) : 0
         print("\(exists ? "exists " : "absent ") \(ByteFormat.compact(size))\t\(url.path)")
     }
+case "top":
+    for p in SystemMetrics.topProcesses(limit: 6) {
+        print("cpu \(String(format: "%.1f", p.cpu))%  pid \(p.pid)  name=[\(p.name)]")
+    }
+    for p in SystemMetrics.topByMemory(limit: 4) {
+        print("mem \(ByteFormat.compact(p.rss))  pid \(p.pid)  name=[\(p.name)]")
+    }
+    print("net \(SystemMetrics.networkTotals())")
+    print("batteryHealth \(String(describing: SystemMetrics.batteryHealth()))")
+
 case "orphans":
     let groups = OrphanDetector.findLeftovers(minAgeDays: 30)
     print("groups: \(groups.count)")

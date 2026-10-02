@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build MoleMac.app from the SwiftPM package.
+# Build Worm.app from the SwiftPM package.
 #
 # SwiftPM produces a bare executable; a macOS app needs a bundle with an
 # Info.plist, an icon, and an ad-hoc signature. This script assembles all three.
@@ -8,9 +8,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 CONFIG="${CONFIG:-release}"
-APP_NAME="MoleMac"
-BUNDLE_ID="dev.local.molemac"
-VERSION="${VERSION:-1.0.0}"
+APP_NAME="Worm"
+BUNDLE_ID="dev.local.worm"
+VERSION="${VERSION:-1.0.1}"
 BUILD_DIR="$ROOT/.build/$CONFIG"
 APP="$ROOT/dist/$APP_NAME.app"
 
@@ -29,7 +29,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key><string>$APP_NAME</string>
-    <key>CFBundleDisplayName</key><string>MoleMac</string>
+    <key>CFBundleDisplayName</key><string>Worm</string>
     <key>CFBundleExecutable</key><string>$APP_NAME</string>
     <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
@@ -37,20 +37,22 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSHumanReadableCopyright</key><string>Built on the open-source Mole CLI.</string>
+    <key>NSHumanReadableCopyright</key><string>Worm for Mac</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
     <!-- Not sandboxed. Cleaning needs to read and move files anywhere the user
          owns, which the App Sandbox forbids outright. -->
     <key>NSAppleEventsUsageDescription</key>
-    <string>MoleMac asks Finder to reveal folders so you can check what it found.</string>
+    <string>Worm asks Finder to reveal folders so you can check what it found.</string>
 </dict>
 </plist>
 PLIST
 
-if [ -f "$ROOT/Resources/AppIcon.icns" ]; then
-    cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
-    /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" \
-        "$APP/Contents/Info.plist" 2>/dev/null || true
+if [ -d "$ROOT/Resources" ]; then
+    cp -R "$ROOT/Resources/"* "$APP/Contents/Resources/"
+    if [ -f "$ROOT/Resources/AppIcon.icns" ]; then
+        /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" \
+            "$APP/Contents/Info.plist" 2>/dev/null || true
+    fi
 fi
 
 # Ad-hoc signature. Without one, macOS refuses to launch the app at all and the

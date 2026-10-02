@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "MoleMac",
+    name: "Worm",
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "MoleCore"),
         .executableTarget(
-            name: "MoleMac",
+            name: "Worm",
             dependencies: ["MoleCore"]
         ),
         // Diagnostics harness. Not shipped in the app bundle; it exists so the

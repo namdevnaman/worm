@@ -130,7 +130,7 @@ public enum SafetyPolicy {
             case .systemCritical:
                 return "This is part of macOS itself and cannot be removed."
             case .criticalDeletionPath:
-                return "This path is on the system deny list. Mole never deletes it."
+                return "This path is on the system deny list. Worm never deletes it."
             case .ancestorSymlink:
                 return "A parent folder is a symbolic link, so the real target cannot be proven safe."
             case .compiledModelCache:
@@ -818,7 +818,7 @@ public final class Whitelist: @unchecked Sendable {
         try FileManager.default.createDirectory(
             at: Paths.configDir, withIntermediateDirectories: true)
         let header = """
-        # MoleMac protect list
+        # Worm protect list
         # One path per line. Nothing listed here is ever cleaned.
         # A path protects itself and everything below it.
 

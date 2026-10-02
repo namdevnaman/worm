@@ -2,4 +2,7 @@
 dist/
 .DS_Store
 *.xcodeproj
-*.xcworkspacemole-src/
+*.xcworkspace
+mole-src/
+.agents/
+skills-lock.json

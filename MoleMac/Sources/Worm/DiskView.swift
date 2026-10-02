@@ -119,7 +119,25 @@ struct DiskView: View {
         section("Biggest Folders",
                 subtitle: "One level into your home folder. Click a row to reveal it in Finder.") {
             if isScanning.value {
-                placeholder("Measuring your home folder…")
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Theme.darkSurfaceRaised)
+                            .frame(width: 38, height: 38)
+                            .overlay(Circle().strokeBorder(Theme.accent.opacity(0.35), lineWidth: 1))
+                        DiggingWormAnimation(size: 28)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Worm is measuring your home directories…")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.ink)
+                        Text("Calculating allocated block sizes on disk.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
             } else if roots.value.isEmpty {
                 placeholder("Nothing large enough to list.")
             } else {
@@ -183,22 +201,38 @@ struct DiskView: View {
     private var largeFilesList: some View {
         section("Large Files",
                 subtitle: "Read-only. Nothing here is deleted from this screen.") {
-            Picker("Minimum size", selection: minimumSize.binding) {
-                Text("100 MB").tag(Int64(100 * 1024 * 1024))
-                Text("500 MB").tag(Int64(500 * 1024 * 1024))
-                Text("1 GB").tag(Int64(1024 * 1024 * 1024))
-                Text("5 GB").tag(Int64(5 * 1024 * 1024 * 1024))
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            SizeSegments(selection: minimumSize.binding, options: [
+                ("100 MB", Int64(100 * 1024 * 1024)),
+                ("500 MB", Int64(500 * 1024 * 1024)),
+                ("1 GB", Int64(1024 * 1024 * 1024)),
+                ("5 GB", Int64(5 * 1024 * 1024 * 1024))
+            ])
             .padding(.horizontal, 14)
             .padding(.bottom, 10)
             .onChange(of: minimumSize.value) { _, _ in scan() }
 
-            if largeFiles.value.isEmpty {
-                placeholder(isScanning.value
-                            ? "Looking for large files…"
-                            : "No files above that size outside your caches.")
+            if isScanning.value && largeFiles.value.isEmpty {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Theme.darkSurfaceRaised)
+                            .frame(width: 38, height: 38)
+                            .overlay(Circle().strokeBorder(Theme.accent.opacity(0.35), lineWidth: 1))
+                        DiggingWormAnimation(size: 28)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Worm is searching for massive files…")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(Theme.ink)
+                        Text("Looking outside your caches for files over \(ByteFormat.compact(minimumSize.value)).")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+            } else if largeFiles.value.isEmpty {
+                placeholder("No files above that size outside your caches.")
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(largeFiles.value.prefix(40).enumerated()),
@@ -255,30 +289,36 @@ struct DiskView: View {
         }
     }
 
-    // MARK: Shared pieces
-
     private func section<Content: View>(_ title: String, subtitle: String,
                                        @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.ink)
                 Text(subtitle)
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            content()
+            .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .padding(.vertical, 4)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge,
+                                                            style: .continuous))
         }
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge,
-                                                        style: .continuous))
     }
 
     private func placeholder(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 12))
-            .foregroundStyle(Theme.inkTertiary)
+            .font(.system(size: 13))
+            // A status line, not a caption. At tertiary grey this read as a
+            // washed-out afterthought next to the section subtitle directly above
+            // it, which is darker.
+            .foregroundStyle(Theme.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
     }

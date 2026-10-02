@@ -7,11 +7,23 @@ struct AppsView: View {
     @EnvironmentObject var store: AppStore
     @StateObject private var search = Box("")
 
+    enum SortOrder: String, CaseIterable, Identifiable {
+        case size = "Size"
+        case name = "Name"
+        var id: String { rawValue }
+    }
+    @StateObject private var sortOrder = Box(SortOrder.size)
+
     private var visibleApps: [InstalledApps.App] {
         let query = search.value.lowercased().trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return store.installedApps }
-        return store.installedApps.filter {
+        let filtered = query.isEmpty ? store.installedApps : store.installedApps.filter {
             $0.name.lowercased().contains(query) || $0.id.lowercased().contains(query)
+        }
+        switch sortOrder.value {
+        case .size:
+            return filtered.sorted { $0.sizeBytes > $1.sizeBytes }
+        case .name:
+            return filtered.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         }
     }
 
@@ -19,12 +31,30 @@ struct AppsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 if store.isLoadingApps && store.installedApps.isEmpty {
-                    ProgressView("Reading installed apps…")
-                        .controlSize(.small)
-                        .frame(maxWidth: .infinity).padding(40)
+                    VStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(Theme.surfaceRaised)
+                                .frame(width: 80, height: 80)
+                                .overlay(
+                                    Circle().strokeBorder(Theme.accent.opacity(0.4), lineWidth: 2)
+                                )
+                                .shadow(color: Theme.accent.opacity(0.18), radius: 10, y: 3)
+                            DiggingWormAnimation(size: 64)
+                        }
+                        Text("Worm is scanning installed apps…")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                        Text("Reading application bundles, versions, and disk footprints.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(36)
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radiusLarge, style: .continuous))
+                } else {
+                    installedSection
                 }
-
-                installedSection
             }
             .padding(18)
         }
@@ -51,19 +81,39 @@ struct AppsView: View {
                         .foregroundStyle(Theme.inkTertiary)
                 }
                 Spacer()
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Theme.inkTertiary)
-                    TextField("Filter apps", text: search.binding)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11))
-                        .frame(width: 150)
+                HStack(spacing: 8) {
+                    Button {
+                        store.loadApps()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Refresh installed apps")
+
+                    Picker("Sort", selection: sortOrder.binding) {
+                        ForEach(SortOrder.allCases) { order in
+                            Text(order.rawValue).tag(order)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 110)
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Theme.inkTertiary)
+                        TextField("Filter apps", text: search.binding)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11))
+                            .frame(width: 130)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Theme.background,
+                                in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(Theme.background,
-                            in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
             }
 
             VStack(spacing: 0) {
@@ -113,10 +163,11 @@ struct AppsView: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 11))
-                    .frame(width: 22, height: 20)
+                    .frame(width: 24, height: 22)
+                    .background(Theme.hairlineSoft.opacity(0.5), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(Theme.inkTertiary)
+            .buttonStyle(FluidButtonStyle(scale: 0.90))
+            .foregroundStyle(Theme.inkSecondary)
             .disabled(app.isProtected)
             .help(app.isProtected
                   ? "\(app.protectionReason ?? "Protected") — cannot be removed here"
@@ -141,8 +192,8 @@ struct AppIcon: View {
 
     var body: some View {
         Group {
-            if let icon = NSWorkspace.shared.icon(forFile: app.path).isTemplate
-                ? nil : NSWorkspace.shared.icon(forFile: app.path), icon.size.width > 1 {
+            let icon = NSWorkspace.shared.icon(forFile: app.path)
+            if !icon.isTemplate && icon.size.width > 1 {
                 Image(nsImage: icon)
                     .resizable()
                     .frame(width: size, height: size)

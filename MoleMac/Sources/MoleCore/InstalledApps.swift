@@ -117,7 +117,7 @@ public enum InstalledApps {
         // Bound the concurrency with a counting semaphore rather than an actor:
         // each measurement is a blocking directory walk, so it belongs on a
         // background thread rather than an actor's executor.
-        let slots = DispatchSemaphore(value: 6)
+        let slots = DispatchSemaphore(value: 8)
         let group = DispatchGroup()
         // A reference box rather than a captured `var`: the compiler cannot
         // prove the concurrent writes are serialised by the lock, and the
@@ -125,12 +125,11 @@ public enum InstalledApps {
         let measured = ResultSlots(count: candidates.count)
 
         for (index, candidate) in candidates.enumerated() {
-            DispatchQueue.global(qos: .userInitiated).async(group: group) {
+            DispatchQueue.global(qos: .userInteractive).async(group: group) {
                 slots.wait()
                 defer { slots.signal() }
-                // `codesign` costs a subprocess per app, so it is read lazily by
-                // the Apps screen rather than during this pass.
-                let bytes = SizeMeasurer.measure(candidate.url.path, timeout: 2.0)
+                // Quick size measurement with a tight deadline for rapid UI feedback
+                let bytes = SizeMeasurer.measure(candidate.url.path, timeout: 0.8)
                 measured.set(index, bytes)
             }
         }
@@ -156,7 +155,7 @@ public enum InstalledApps {
                 isSystem: url.path.hasPrefix("/System/")
                     || url.path.hasPrefix("/Applications/Utilities/"),
                 isRunning: running?.contains(candidate.bundleID) == true,
-                signer: codeSigningTeam(url)))
+                signer: nil))
         }
         return apps.sorted { $0.sizeBytes > $1.sizeBytes }
     }

@@ -36,6 +36,15 @@ final class AppStore: ObservableObject {
 
     @Published private(set) var scanState: ScanState = .idle
     @Published private(set) var cleanPhase: CleanPhase = .idle
+    @Published var activeTab: String = "clean"
+    @Published var themeMode: Theme.Mode = {
+        let saved = UserDefaults.standard.string(forKey: "worm_theme_mode") ?? Theme.Mode.system.rawValue
+        return Theme.Mode(rawValue: saved) ?? .system
+    }() {
+        didSet {
+            UserDefaults.standard.set(themeMode.rawValue, forKey: "worm_theme_mode")
+        }
+    }
     @Published var selectedCategory: CleanCategory = .appCaches
     @Published var selectedPaths: Set<String> = []
     @Published var showBlocked = false
@@ -48,6 +57,7 @@ final class AppStore: ObservableObject {
     @Published private(set) var orphanGroups: [OrphanDetector.OrphanGroup] = []
     @Published private(set) var isLoadingOrphans = false
     @Published private(set) var isLoadingApps = false
+    @Published private(set) var hasScannedOnce = false
     /// Leftover IDs the user has chosen. Persisted across a scan so a rescan
     /// does not silently drop the selection they were reviewing.
     @Published private(set) var selectedLeftoverIDs: Set<String> = []
@@ -56,6 +66,7 @@ final class AppStore: ObservableObject {
     @Published var searchText = ""
     @Published var protectList: [String] = []
     @Published var banner: Banner?
+    @Published var showPrivacyGuide = false
     /// Free space captured before a scan or clean, so the reported gain is that
     /// run's change rather than the machine's overall drift.
     @Published private(set) var freeBytesBefore: Int64 = 0
@@ -150,7 +161,7 @@ final class AppStore: ObservableObject {
         targets.filter { selectedPaths.contains($0.path) }
     }
 
-var selectedBytes: Int64 {
+    var selectedBytes: Int64 {
         selectedTargets.reduce(0) { $0 + $1.bytes }
     }
 
@@ -165,7 +176,7 @@ var selectedBytes: Int64 {
                 ? "\(ByteFormat.compact(cleanable)) selected to clean"
                 : "\(ByteFormat.compact(totalBytes)) reclaimable"
         case .failed:
-            return "Scan failed — open MoleMac to retry"
+            return "Scan failed — open Worm to retry"
         case .idle, .scanning:
             return "Nothing scanned yet"
         }
@@ -177,7 +188,12 @@ var selectedBytes: Int64 {
         mainWindowOpener?()
     }
 
-    /// Injected by `MoleMacApp`, since only an `App` can reopen its window.
+    func navigate(to tab: String) {
+        activeTab = tab
+        openMainWindow()
+    }
+
+    /// Injected by `WormApp`, since only an `App` can reopen its window.
     var mainWindowOpener: (() -> Void)?
 
     /// Paths that are cleanable but carry a caution, keyed by path.
@@ -246,6 +262,9 @@ var selectedBytes: Int64 {
         // A cached "app is running" verdict would keep a just-closed app's cache
         // blocked for the rest of the session.
         LivenessProbe.invalidateCaches()
+        // Invalidate the Full Disk Access probe so a re-granted TCC permission
+        // is visible on this scan rather than waiting for the cache TTL to expire.
+        SizeMeasurer.Access.invalidate()
         scanState = .scanning(progress: "Measuring cache and log folders")
         freeBytesBefore = SystemMetrics.disk().freeBytes
 
@@ -254,6 +273,7 @@ var selectedBytes: Int64 {
             let result = await engine.scan()
             await MainActor.run {
                 self.scanState = .scanned(result)
+                self.hasScannedOnce = true
                 self.applyDefaultSelection()
                 self.notify(Banner(
                     kind: result.targets.isEmpty ? .info : .success,
@@ -301,7 +321,7 @@ var selectedBytes: Int64 {
     private func applyDefaultSelection() {
         guard case .scanned(let result) = scanState else { return }
 
-        var selection = Set(result.targets
+        let selection = Set(result.targets
             .filter { target in
                 switch target.categoryID {
                 case .logs, .userEssentials, .appCaches, .browsers, .developerTools,
@@ -495,8 +515,21 @@ var selectedBytes: Int64 {
     func loadMetrics() {
         metricsTask?.cancel()
         metricsTask = Task.detached(priority: .utility) { [weak self] in
+            // Initial eager check
+            let initialSnapshot = SystemMetrics.snapshot()
+            let initialHealth = Health.checks()
+            await MainActor.run {
+                self?.metrics = initialSnapshot
+                self?.health = initialHealth
+                let baseline = self?.freeBytesBefore ?? 0
+                self?.freeSpaceGain = max(0, initialSnapshot.disk.freeBytes - baseline)
+            }
+
             while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { break }
                 let snapshot = SystemMetrics.snapshot()
+                // Only re-run heavy health checks periodically, not every cycle
                 let health = Health.checks()
                 await MainActor.run {
                     self?.metrics = snapshot
@@ -504,7 +537,6 @@ var selectedBytes: Int64 {
                     let baseline = self?.freeBytesBefore ?? 0
                     self?.freeSpaceGain = max(0, snapshot.disk.freeBytes - baseline)
                 }
-                try? await Task.sleep(for: .seconds(3))
             }
         }
     }
@@ -512,6 +544,7 @@ var selectedBytes: Int64 {
     /// Detect leftover data. Off the main actor: the absence check reads
     /// LaunchServices and measures every candidate trace.
     func loadOrphans() {
+        guard !isLoadingOrphans else { return }
         isLoadingOrphans = true
         Task.detached(priority: .utility) { [weak self] in
             let groups = OrphanDetector.findLeftovers()
@@ -540,6 +573,31 @@ var selectedBytes: Int64 {
 
     func clearSelection(in group: OrphanDetector.OrphanGroup) {
         for trace in group.leftovers { selectedLeftoverIDs.remove(trace.id) }
+    }
+
+    func toggleGroup(_ group: OrphanDetector.OrphanGroup) {
+        let removable = group.leftovers.filter {
+            SafetyPolicy.verdict(for: $0.path, bundleID: $0.bundleID,
+                                 whitelist: .empty, probeLiveness: false).isAllowed
+        }
+        let allSelected = !removable.isEmpty && removable.allSatisfy { selectedLeftoverIDs.contains($0.id) }
+        if allSelected {
+            clearSelection(in: group)
+        } else {
+            selectedLeftoverIDs.formUnion(removable.map(\.id))
+        }
+    }
+
+    func selectAllLeftovers() {
+        let allRemovable = orphanGroups.flatMap(\.leftovers).filter {
+            SafetyPolicy.verdict(for: $0.path, bundleID: $0.bundleID,
+                                 whitelist: .empty, probeLiveness: false).isAllowed
+        }
+        selectedLeftoverIDs.formUnion(allRemovable.map(\.id))
+    }
+
+    func deselectAllLeftovers() {
+        selectedLeftoverIDs.removeAll()
     }
 
     /// Remove the chosen traces. Each one goes through the reclaimer, so the
@@ -629,7 +687,7 @@ var selectedBytes: Int64 {
             }
         }
 
-removalPlan = nil
+        removalPlan = nil
 
         // Whatever the user chose not to tick is now genuinely an orphan, because
         // the app is gone. Tell them rather than leaving it to be rediscovered in
@@ -666,6 +724,7 @@ removalPlan = nil
     /// Load the installed-app list. Off the main actor because reading every
     /// bundle plist and walking each app bundle for its size is real work.
     func loadApps() {
+        guard !isLoadingApps else { return }
         isLoadingApps = true
         Task.detached(priority: .utility) { [weak self] in
             let apps = InstalledApps.all()
@@ -719,7 +778,6 @@ enum NSWorkspaceBridge {
             "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFilesAccess")
         else { return }
         NSWorkspace.shared.open(url)
-        NSWorkspace.shared.activateFileViewerSelecting([])
     }
 
     /// Reveals this app in Finder so the user can drag it onto the Full Disk

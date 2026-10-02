@@ -86,7 +86,7 @@ public enum AuditLog {
         }
     }
 
-    private static let queue = DispatchQueue(label: "dev.molemac.audit", qos: .utility)
+    private static let queue = DispatchQueue(label: "dev.worm.audit", qos: .utility)
 
     public static func append(
         mode: String, sizeBytes: Int64?, status: String, target: String,
@@ -125,6 +125,42 @@ public enum AuditLog {
     }
 
     nonisolated(unsafe) static var writeFailureFlag = false
+
+    /// Lifetime totals for the "Clean Watch" footer, derived from the audit log so
+    /// they cannot drift from what was actually recorded.
+    public struct Totals: Sendable, Equatable {
+        public let cleanedBytes: Int64
+        public let uninstalled: Int
+        public let optimised: Int
+        public let refused: Int
+
+        public static func from(_ entries: [Entry]) -> Totals {
+            var cleaned: Int64 = 0
+            var uninstalled = 0, optimised = 0, refused = 0
+            for entry in entries {
+                // "Kept" and other refusals are safety decisions, not outcomes the
+                // user asked for, so they are counted separately rather than
+                // counted as work done.
+                guard entry.status == "ok" else {
+                    refused += 1
+                    continue
+                }
+                if entry.category == "uninstall" { uninstalled += 1 }
+                else { optimised += 1 }
+                cleaned += entry.sizeBytes ?? 0
+            }
+            return Totals(cleanedBytes: cleaned, uninstalled: uninstalled,
+                          optimised: optimised, refused: refused)
+        }
+    }
+
+    /// Lifetime totals across the whole audit log.
+    ///
+    /// The log is append-only and small, so a full read is cheaper than keeping a
+    /// running total that could disagree with the file after a crash.
+    public static func totals() -> Totals {
+        Totals.from(recentEntries(limit: Int.max))
+    }
 
     public static func recentEntries(limit: Int = 500) -> [Entry] {
         guard let text = try? String(contentsOf: Paths.deletionLog, encoding: .utf8) else {

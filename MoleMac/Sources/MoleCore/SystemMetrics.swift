@@ -1,4 +1,5 @@
 import Foundation
+import IOKit
 import IOKit.ps
 import Darwin
 
@@ -32,6 +33,21 @@ public enum SystemMetrics {
         public let timeToEmptyMinutes: Int?
     }
 
+    /// GPU utilisation and identity, read from IOKit without requiring root.
+    public struct GPU: Sendable {
+        public let usagePercent: Double   // 0–100
+        public let temperatureCelsius: Int?
+        public let rendererUtilization: Double
+        public let tilerUtilization: Double
+        public let name: String           // e.g. "M5"
+    }
+
+    /// Fan telemetry from IOKit, when available.
+    public struct Fan: Sendable {
+        public let rpm: Int
+        public let loadPercent: Double    // 0–100
+    }
+
     public struct Snapshot: Sendable {
         public let disk: Disk
         public let memory: Memory
@@ -39,7 +55,57 @@ public enum SystemMetrics {
         public let uptimeSeconds: TimeInterval
         public let loadAverage: [Double]
         public let topCPU: [(pid: Int32, name: String, cpu: Double)]
+        /// Bytes per second, differenced from the previous sample.
+        public let networkRate: (rx: Int64, tx: Int64)
+        /// Battery condition and cycle count, when the machine reports them.
+        public let batteryHealth: (healthPercent: Int, cycles: Int)?
+        public let gpu: GPU?
+        public let fan: Fan?
+        public let cpuTemperatureCelsius: Int?
         public let timestamp: Date
+    }
+
+    /// Facts about the machine itself, shown as chips in the menu bar panel.
+    ///
+    /// Cached because none of it changes while the app is running, and reading it
+    /// costs a `sysctl` walk.
+    public struct Machine: Sendable {
+        public let chip: String
+        public let cores: Int
+        public let osVersion: String
+
+        public static var current: Machine {
+            cached.cached() ?? {
+                let value = Machine(chip: readChip(), cores: ProcessInfo.processInfo.processorCount,
+                                    osVersion: readOSVersion())
+                cached.store(value)
+                return value
+            }()
+        }
+
+        private static let cached = LivenessProbe.ProbeCache<Machine>(ttl: 3600)
+
+        /// Marketing name, e.g. "Apple M5". `machdep.cpu.brand_string` carries it on
+        /// Intel; Apple silicon hides it under a `hw.model`-style key, so fall back
+        /// to the machine identifier rather than printing nothing.
+        private static func readChip() -> String {
+            for key in ["machdep.cpu.brand_string", "hw.model"] {
+                var size = 0
+                guard sysctlbyname(key, nil, &size, nil, 0) == 0, size > 0 else { continue }
+                var value = [CChar](repeating: 0, count: size)
+                guard sysctlbyname(key, &value, &size, nil, 0) == 0 else { continue }
+                let text = String(decoding: value.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) },
+                                  as: UTF8.self)
+                    .trimmingCharacters(in: .whitespaces)
+                if !text.isEmpty { return text }
+            }
+            return "This Mac"
+        }
+
+        private static func readOSVersion() -> String {
+            let version = ProcessInfo.processInfo.operatingSystemVersion
+            return "macOS \(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+        }
     }
 
     public static func disk() -> Disk {
@@ -142,22 +208,106 @@ public enum SystemMetrics {
         let elapsed = Date().timeIntervalSince(first.stamp)
         guard elapsed > 0 else { return [] }
 
-        var results: [(pid: Int32, name: String, cpu: Double)] = []
-        for (pid, name) in first.names {
-            guard let start = first.times[pid], let end = second.times[pid], end > start else {
-                continue
-            }
-            // cpu_time_ns delta over wall-clock delta is the per-core
-            // utilisation, so a 400% figure means four cores saturated.
+        var topDeltas: [(pid: Int32, cpu: Double)] = []
+        for (pid, start) in first.times {
+            guard let end = second.times[pid], end > start else { continue }
             let fraction = Double(end - start) / 1_000_000_000.0 / elapsed * 100.0
-            guard fraction > 0.5 else { continue }
-            results.append((pid: pid, name: name, cpu: fraction))
+            guard fraction >= 0.05 else { continue }
+            topDeltas.append((pid: pid, cpu: fraction))
         }
-        return Array(results.sorted { $0.cpu > $1.cpu }.prefix(limit))
+
+        topDeltas.sort { $0.cpu > $1.cpu }
+        let topSlice = topDeltas.prefix(limit)
+
+        var results: [(pid: Int32, name: String, cpu: Double)] = []
+        for item in topSlice {
+            results.append((pid: item.pid, name: name(for: item.pid).name, cpu: item.cpu))
+        }
+
+        // If fewer than limit were actively burning CPU in the 350ms window,
+        // backfill with top active processes by memory so the list always has rich telemetry
+        if results.count < limit {
+            let memoryTop = topByMemory(limit: limit)
+            let existingPids = Set(results.map { $0.pid })
+            for item in memoryTop {
+                if !existingPids.contains(item.pid) {
+                    results.append((pid: item.pid, name: item.name, cpu: 0.0))
+                    if results.count >= limit { break }
+                }
+            }
+        }
+
+        return Array(results.prefix(limit))
+    }
+
+    /// Resident memory per process, so the panel can show a Memory column beside
+    /// CPU instead of leaving the user to guess which app is heavy.
+    public static func topByMemory(limit: Int = 8) -> [(pid: Int32, name: String, rss: Int64)] {
+        let stride = MemoryLayout<pid_t>.stride
+        let byteCount = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
+        var pids = [pid_t](repeating: 0, count: Int(byteCount) / stride + 64)
+        let filled = pids.withUnsafeMutableBufferPointer { buffer -> Int in
+            Int(proc_listpids(UInt32(PROC_ALL_PIDS), 0, buffer.baseAddress,
+                              Int32(buffer.count * stride))) / stride
+        }
+        let pidCount = min(max(filled, 0), pids.count)
+        guard pidCount > 0 else { return [] }
+
+        var results: [(pid: Int32, name: String, rss: Int64)] = []
+        for index in 0..<pidCount {
+            let pid = pids[index]
+            guard pid > 0 else { continue }
+            var info = proc_taskinfo()
+            let strideInfo = Int32(MemoryLayout<proc_taskinfo>.stride)
+            guard proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, strideInfo) == strideInfo,
+                  info.pti_resident_size > 0 else { continue }
+            results.append((pid, name(for: pid).name, Int64(info.pti_resident_size)))
+        }
+        return Array(results.sorted { $0.rss > $1.rss }.prefix(limit))
+    }
+
+    /// Cumulative bytes sent and received, so the caller can difference two
+    /// samples into a rate. `if_data` counters wrap and reset on link changes, so
+    /// a negative delta is reported as 0 rather than as a huge negative spike.
+    public static func networkTotals() -> (rx: Int64, tx: Int64) {
+        var rx: Int64 = 0, tx: Int64 = 0
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return (0, 0) }
+        defer { freeifaddrs(ifaddr) }
+        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        while let entry = cursor {
+            defer { cursor = entry.pointee.ifa_next }
+            let flags = Int32(entry.pointee.ifa_flags)
+            guard flags & IFF_UP == IFF_UP, flags & IFF_LOOPBACK == 0,
+                  let data = entry.pointee.ifa_data else { continue }
+            let stats = data.assumingMemoryBound(to: if_data.self)
+            rx += Int64(stats.pointee.ifi_ibytes)
+            tx += Int64(stats.pointee.ifi_obytes)
+        }
+        return (rx, tx)
+    }
+
+    /// Display name for a pid.
+    ///
+    /// `proc_name` reports success on this SDK while leaving the buffer empty, so
+    /// every process came back as a blank row in the panel. `proc_pidpath` is the
+    /// supported route; the last path component is the name, and the full path is
+    /// kept for a tooltip.
+    private static func name(for pid: pid_t) -> (name: String, path: String) {
+        var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN) + 1)
+        let length = proc_pidpath(pid, &buffer, UInt32(MAXPATHLEN))
+        guard length > 0 else {
+            return ("pid \(pid)", "")
+        }
+        let path = String(decoding: buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) },
+                          as: UTF8.self)
+        // A helper binary reports as ".../Contents/MacOS/Foo"; "Foo" is the name
+        // a user recognises.
+        let last = (path as NSString).lastPathComponent
+        return (last.isEmpty ? "pid \(pid)" : last, path)
     }
 
     private static func sampleCPUTime() -> (times: [pid_t: UInt64],
-                                           names: [pid_t: String],
                                            stamp: Date) {
         let stride = MemoryLayout<pid_t>.stride
         let byteCount = proc_listpids(UInt32(PROC_ALL_PIDS), 0, nil, 0)
@@ -167,12 +317,10 @@ public enum SystemMetrics {
                               Int32(buffer.count * stride))) / stride
         }
         let pidCount = min(max(filled, 0), pids.count)
-        guard pidCount > 0 else { return ([:], [:], Date()) }
+        guard pidCount > 0 else { return ([:], Date()) }
 
         var times: [pid_t: UInt64] = [:]
-        var names: [pid_t: String] = [:]
         times.reserveCapacity(pidCount)
-        names.reserveCapacity(pidCount)
 
         for index in 0..<pidCount {
             let pid = pids[index]
@@ -183,26 +331,216 @@ public enum SystemMetrics {
                 continue
             }
             times[pid] = info.pti_total_user &+ info.pti_total_system
-
-            var nameBuffer = [CChar](repeating: 0, count: Int(MAXCOMLEN) + 1)
-            guard proc_name(pid, &nameBuffer, UInt32(MAXCOMLEN)) == 0 else { continue }
-            names[pid] = String(decoding: nameBuffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) },
-                                as: UTF8.self)
         }
-        return (times, names, Date())
+        return (times, Date())
     }
 
-    public static func snapshot() -> Snapshot {
+    /// Previous network counters, so successive calls can produce a rate.
+    private static let lastNet = LivenessProbe.ProbeCache<(rx: Int64, tx: Int64)>(ttl: 1)
+
+    // MARK: – GPU (IOKit, no root required)
+
+    /// GPU utilisation read from IOKit `IOAccelerator` performance statistics.
+    ///
+    /// On Apple Silicon the GPU perf-state is published under the accelerator
+    /// node as `PerformanceStatistics`. The key `Device Utilization %` gives
+    /// a 0–100 number for the overall GPU busy fraction.
+    public static func gpu() -> GPU? {
+        let chipName: String
+        let raw = Machine.current.chip
+        chipName = raw.hasPrefix("Apple ") ? String(raw.dropFirst(6)) : raw
+
+        let matching = IOServiceMatching("IOAccelerator")
+        var iter: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter) == KERN_SUCCESS else {
+            return GPU(usagePercent: 0, temperatureCelsius: nil,
+                       rendererUtilization: 0, tilerUtilization: 0, name: chipName)
+        }
+        defer { IOObjectRelease(iter) }
+
+        var bestUsage: Double = 0
+        var renderer: Double = 0
+        var tiler: Double = 0
+
+        var service = IOIteratorNext(iter)
+        while service != 0 {
+            defer { IOObjectRelease(service); service = IOIteratorNext(iter) }
+            var props: Unmanaged<CFMutableDictionary>?
+            guard IORegistryEntryCreateCFProperties(service, &props,
+                                                   kCFAllocatorDefault, 0) == KERN_SUCCESS,
+                  let dict = props?.takeRetainedValue() as? [String: Any],
+                  let stats = dict["PerformanceStatistics"] as? [String: Any] else { continue }
+
+            let util = (stats["Device Utilization %"] as? Double)
+                       ?? (stats["GPU Activity(%)"] as? Double)
+                       ?? 0
+            let r = (stats["Renderer Utilization %"] as? Double) ?? 0
+            let t = (stats["Tiler Utilization %"] as? Double) ?? 0
+            if util > bestUsage { bestUsage = util; renderer = r; tiler = t }
+        }
+
+        return GPU(usagePercent: min(100, bestUsage),
+                   temperatureCelsius: nil,
+                   rendererUtilization: renderer,
+                   tilerUtilization: tiler,
+                   name: chipName)
+    }
+
+    // MARK: – Fan (IORegistry, no root required)
+
+    /// Fan RPM from IORegistry fan service nodes.
+    ///
+    /// Returns nil when no fan data is available (fanless Macs, or macOS
+    /// versions that don't publish this key).
+    public static func fan() -> Fan? {
+        // Walk the IORegistry for fan service nodes on Apple Silicon / Intel.
+        for serviceName in ["AppleFan", "AppleHPMFan"] {
+            let matching = IOServiceNameMatching(serviceName)
+            var iter: io_iterator_t = 0
+            guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter) == KERN_SUCCESS else { continue }
+            defer { IOObjectRelease(iter) }
+            var service = IOIteratorNext(iter)
+            while service != 0 {
+                defer { IOObjectRelease(service); service = IOIteratorNext(iter) }
+                var props: Unmanaged<CFMutableDictionary>?
+                guard IORegistryEntryCreateCFProperties(service, &props,
+                                                       kCFAllocatorDefault, 0) == KERN_SUCCESS,
+                      let dict = props?.takeRetainedValue() as? [String: Any] else { continue }
+                for key in ["FAN_SPEED", "fan-speed", "CurrentSpeed", "RPM"] {
+                    let raw = (dict[key] as? Double).map(Int.init) ?? (dict[key] as? Int)
+                    if let rpm = raw, rpm > 0 {
+                        let load = min(100.0, Double(rpm) / 6000.0 * 100.0)
+                        return Fan(rpm: rpm, loadPercent: load)
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
+    // MARK: – CPU Temperature (IORegistry, no root required)
+
+    /// CPU-adjacent temperature from IORegistry.
+    ///
+    /// Most Macs don't expose a raw CPU die temperature without `powermetrics`
+    /// (which requires root). Returns nil when unavailable (e.g. desktops).
+    public static func cpuTemperature() -> Int? {
+        for serviceClass in ["AppleSmartBatteryPack", "AppleSmartBattery"] {
+            let matching = IOServiceMatching(serviceClass)
+            var iter: io_iterator_t = 0
+            guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iter) == KERN_SUCCESS else {
+                continue
+            }
+        defer { IOObjectRelease(iter) }
+        var service = IOIteratorNext(iter)
+        while service != 0 {
+            defer { IOObjectRelease(service); service = IOIteratorNext(iter) }
+            var props: Unmanaged<CFMutableDictionary>?
+            guard IORegistryEntryCreateCFProperties(service, &props,
+                                                   kCFAllocatorDefault, 0) == KERN_SUCCESS,
+                  let dict = props?.takeRetainedValue() as? [String: Any] else { continue }
+            
+            let batteryData = dict["BatteryData"] as? [String: Any]
+            for candidateDict in [dict, batteryData ?? [:]] {
+                for key in ["Temperature", "PackTemperature", "VirtualTemperature"] {
+                    if let raw = candidateDict[key] as? Int, raw > 0 {
+                        // Temperature is often reported in tenths of degree Celsius (e.g. 3620 = 36.2°C)
+                        // or in 256ths on older models.
+                        var celsius = 0
+                        if raw > 2000 && raw < 10000 {
+                            celsius = raw / 100 // e.g. 3620 -> 36°C
+                        } else if raw >= 10000 {
+                            celsius = Int(Double(raw) / 256.0)
+                        } else {
+                            celsius = raw
+                        }
+                        if celsius > 15 && celsius < 120 { return celsius }
+                    }
+                }
+            }
+        }
+        }
+        return nil
+    }
+
+    // MARK: – Snapshot
+
+    /// A fast initial snapshot populated with instantaneous, non-blocking metrics
+    /// so the view renders immediately with actual values without waiting for CPU sampling.
+    public static func emptySnapshot() -> Snapshot {
         Snapshot(
             disk: disk(),
             memory: memory(),
             battery: battery(),
             uptimeSeconds: uptime(),
             loadAverage: loadAverage(),
-            topCPU: topProcesses(),
+            topCPU: [],
+            networkRate: (0, 0),
+            batteryHealth: batteryHealth(),
+            gpu: gpu(),
+            fan: fan(),
+            cpuTemperatureCelsius: cpuTemperature(),
             timestamp: Date())
     }
+
+    public static func snapshot() -> Snapshot {
+        let net = networkTotals()
+        var rate: (rx: Int64, tx: Int64) = (0, 0)
+        if let previous = lastNet.cached(), net.rx >= previous.rx, net.tx >= previous.tx {
+            rate = (net.rx - previous.rx, net.tx - previous.tx)
+        }
+        lastNet.store(net)
+
+        return Snapshot(
+            disk: disk(),
+            memory: memory(),
+            battery: battery(),
+            uptimeSeconds: uptime(),
+            loadAverage: loadAverage(),
+            topCPU: topProcesses(limit: 50),
+            networkRate: rate,
+            batteryHealth: batteryHealth(),
+            gpu: gpu(),
+            fan: fan(),
+            cpuTemperatureCelsius: cpuTemperature(),
+            timestamp: Date())
+    }
+
+    /// Battery wear and cycle count.
+    ///
+    /// Read through `ioreg`, the only route that needs no helper daemon. This
+    /// hardware publishes no `Condition` key, so wear is derived from full
+    /// charge against nominal capacity — the same figure the system shows as
+    /// "Battery Health". Absent on a desktop, which is why it is optional.
+    public static func batteryHealth() -> (healthPercent: Int, cycles: Int)? {
+        guard let out = try? Paths.run("/usr/sbin/ioreg",
+                                       ["-r", "-c", "AppleSmartBattery", "-l"],
+                                       timeout: 2),
+              out.status == 0 else { return nil }
+
+        // `String.range(of:)` matches literally unless asked otherwise, so a
+        // pattern containing `\s` needs `.regularExpression` — without it this
+        // silently matched nothing and reported no battery at all.
+        func integer(_ key: String) -> Int? {
+            let pattern = "\"\\(key)\"\\s*=\\s*(-?[0-9]+)"
+            guard let _ = out.stdout.range(of: pattern,
+                                               options: .regularExpression),
+                  let match = try? NSRegularExpression(pattern: pattern)
+                      .firstMatch(in: out.stdout, range: NSRange(out.stdout.startIndex..., in: out.stdout)),
+                  let numberRange = Range(match.range(at: 1), in: out.stdout)
+            else { return nil }
+            return Int(out.stdout[numberRange])
+        }
+
+        guard let cycles = integer("CycleCount"),
+              let full = integer("FullChargeCapacity"),
+              let nominal = integer("NominalChargeCapacity"),
+              nominal > 0 else { return nil }
+        return (min(100, Int((Double(full) / Double(nominal) * 100).rounded())), cycles)
+    }
 }
+
+// MARK: – Read-only health checks
 
 /// Read-only health checks. Each returns a finding with the reason it matters
 /// and what to do, rather than a bare pass/fail.

@@ -128,8 +128,8 @@ struct UninstallLeftoverSheet: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.ink)
                 Spacer()
-                Button(autoSelected.count == removable.filter({ !$0.needsReview }).count
-                       ? "Select all" : "Deselect all") {
+                let allAutoSelected = !removable.filter({ !$0.needsReview }).isEmpty && autoSelected.count == removable.filter({ !$0.needsReview }).count
+                Button(allAutoSelected ? "Deselect all" : "Select all") {
                     let ids = Set(removable.filter { !$0.needsReview }.map(\.id))
                     model.selected.value = autoSelected.count == ids.count ? [] : ids
                 }

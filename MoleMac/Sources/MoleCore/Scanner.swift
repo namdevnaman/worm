@@ -79,14 +79,8 @@ public enum SizeMeasurer {
         if !isDirectory.boolValue {
             return FileManager.default.isReadableFile(atPath: path)
         }
-        guard let entries = try? FileManager.default.contentsOfDirectory(
-            atPath: path) else { return false }
-        // An empty listing is inconclusive, so probe one child.
-        guard let first = entries.first else {
-            return FileManager.default.isReadableFile(atPath: path)
-        }
-        return FileManager.default.isReadableFile(
-            atPath: (path as NSString).appendingPathComponent(first))
+        // If we can read the directory entries, we have permission to access the container
+        return (try? FileManager.default.contentsOfDirectory(atPath: path)) != nil
     }
 
     /// True when a measurement of `path` is trustworthy.
@@ -101,7 +95,10 @@ public enum SizeMeasurer {
     /// Directories whose contents macOS refuses to read without Full Disk
     /// Access. Detected once, since the answer does not change mid-session.
     public enum Access {
-        private static let flag = LivenessProbe.ProbeCache<Bool>(ttl: 30)
+        // 5-second TTL: short enough to reflect a permission re-grant within
+        // one scan cycle, long enough to avoid hammering the filesystem on
+        // every view update.
+        private static let flag = LivenessProbe.ProbeCache<Bool>(ttl: 5)
 
         public static var lacksFullDiskAccess: Bool {
             if let cached = flag.cached() { return cached }
@@ -110,25 +107,24 @@ public enum SizeMeasurer {
             return result
         }
 
+        /// Force a fresh probe on the next read. Called by `AppStore.scan()`
+        /// so a re-granted TCC permission is noticed at the next scan rather
+        /// than waiting for the cache to expire.
+        public static func invalidate() {
+            flag.invalidate()
+        }
+
         private static func probe() -> Bool {
-            // A container we cannot descend into is the signal. "Is this folder
-            // empty" is not a usable probe: an empty container and a protected one
-            // look the same from the outside.
-            //
-            // The signal is a *majority*, not "any". Without Full Disk Access
-            // essentially no container contents can be read, so the fraction sits
-            // near zero. With it, nearly all can — but a handful can still be
-            // unreadable for unrelated reasons (root-owned, SIP-protected,
-            // belonging to a removed app with odd ownership). Testing "any
-            // unreadable" therefore reported missing access even when the grant
-            // was live, and the app kept asking for a permission it already had.
             let sample = Paths.containers.path
             let names = (try? FileManager.default.contentsOfDirectory(atPath: sample)) ?? []
-            guard !names.isEmpty else { return true }
-            // Cap the work: a Mac can hold hundreds of containers and one stat per
-            // entry is not free.
-            let probed = names.prefix(40)
+            guard !names.isEmpty else {
+                // If we can't even read ~/Library/Containers, FDA is definitely missing
+                return true
+            }
+            let probed = names.prefix(30)
+            guard !probed.isEmpty else { return false }
             let readable = probed.filter { canRead("\(sample)/\($0)") }.count
+            // If the majority of containers cannot be entered, FDA is missing.
             return readable * 2 < probed.count
         }
     }

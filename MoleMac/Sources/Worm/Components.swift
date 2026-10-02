@@ -213,22 +213,24 @@ struct Checkbox: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
                     .fill(isOn ? Theme.accent : Color.white)
-                    .frame(width: 13, height: 13)
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .frame(width: 14, height: 14)
+                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
                     .strokeBorder(isOn ? Theme.accent : Theme.hairline, lineWidth: 1)
-                    .frame(width: 13, height: 13)
+                    .frame(width: 14, height: 14)
                 if isOn {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: 8.5, weight: .bold))
                         .foregroundStyle(.white)
+                        .transition(.scale(scale: 0.5).combined(with: .opacity))
                 }
             }
             .frame(width: 20, height: 20)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FluidButtonStyle(scale: 0.88))
+        .animation(Theme.springBouncy, value: isOn)
         .accessibilityLabel(label)
         .accessibilityAddTraits(isOn ? [.isSelected, .isButton] : .isButton)
     }
@@ -297,7 +299,7 @@ struct DeleteModeSegments: View {
             segment(permanentTitle, "exclamationmark.triangle.fill",
                     active: mode == .permanent, tint: Theme.danger,
                     help: "No undo. Prefer Trash unless you need the space back immediately.") {
-                mode = .permanent
+                withAnimation(Theme.springSnappy) { mode = .permanent }
             }
         }
         .padding(2)
@@ -327,9 +329,45 @@ struct DeleteModeSegments: View {
                     .fill(active ? tint : .clear))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FluidButtonStyle(scale: 0.96))
         .help(help)
         .accessibilityLabel(title)
         .accessibilityAddTraits(active ? [.isSelected] : [])
+    }
+}
+
+/// Custom segmented control for file size threshold with clearly separated pill buttons
+struct SizeSegments: View {
+    @Binding var selection: Int64
+    let options: [(label: String, value: Int64)]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(options, id: \.value) { opt in
+                let active = selection == opt.value
+                Button {
+                    withAnimation(Theme.springBouncy) {
+                        selection = opt.value
+                    }
+                } label: {
+                    Text(opt.label)
+                        .font(.system(size: 11, weight: active ? .semibold : .medium))
+                        .foregroundStyle(active ? .white : Theme.ink)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(active ? Theme.accent : Theme.surface)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .strokeBorder(active ? Theme.accent : Theme.hairline, lineWidth: 1)
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(FluidButtonStyle(scale: 0.95))
+            }
+        }
     }
 }

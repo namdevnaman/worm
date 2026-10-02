@@ -17,7 +17,7 @@ public enum Paths {
     public static var trash: URL { home.appendingPathComponent(".Trash", isDirectory: true) }
     public static var developer: URL { library.appendingPathComponent("Developer", isDirectory: true) }
 
-    public static var configDir: URL { home.appendingPathComponent(".config/mole", isDirectory: true) }
+    public static var configDir: URL { home.appendingPathComponent(".config/worm", isDirectory: true) }
 
     /// `getconf DARWIN_USER_CACHE_DIR` — normally `~/Library/Caches`, but it can
     /// be redirected per-user. Caches swept by path must use this, not a guess.
@@ -43,7 +43,7 @@ public enum Paths {
         return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
     }
 
-    public static var logDir: URL { logs.appendingPathComponent("MoleMac", isDirectory: true) }
+    public static var logDir: URL { logs.appendingPathComponent("Worm", isDirectory: true) }
     public static var deletionLog: URL { logDir.appendingPathComponent("deletions.tsv") }
     public static var historyLog: URL { logDir.appendingPathComponent("history.jsonl") }
 
@@ -63,7 +63,7 @@ public enum Paths {
     }
 
     @discardableResult
-    static func run(_ launchPath: String, _ args: [String], timeout: TimeInterval) throws -> CommandResult {
+    public static func run(_ launchPath: String, _ args: [String], timeout: TimeInterval) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launchPath)
         process.arguments = args
@@ -121,11 +121,11 @@ private final class PipeCollector: @unchecked Sendable {
     }
 }
 
-struct CommandResult {
-    let status: Int32
-    let stdout: String
-    let stderr: String
-    var timedOut: Bool = false
+public struct CommandResult {
+    public let status: Int32
+    public let stdout: String
+    public let stderr: String
+    public var timedOut: Bool = false
 }
 
 public enum ByteFormat {

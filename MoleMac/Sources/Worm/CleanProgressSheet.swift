@@ -1,6 +1,5 @@
 import SwiftUI
 import MoleCore
-import MoleCore
 
 /// Modal shown while a clean runs and after it finishes. It reports exactly
 /// what happened, including what was kept and why — the part a CLI summary
@@ -48,6 +47,7 @@ struct CleanProgressSheet: View {
                         .foregroundStyle(Theme.inkTertiary)
                 }
             } else {
+                let kept = (store.lastSummary?.keptCount ?? 0) > 0
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16))
                     .foregroundStyle(Theme.accent)
@@ -55,7 +55,9 @@ struct CleanProgressSheet: View {
                     Text("Clean finished")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.ink)
-                    Text("Closed apps to reclaim more")
+                    Text(kept
+                         ? "Some items were kept for safety (close open apps to reclaim more)"
+                         : "All selected items cleaned successfully")
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -67,11 +69,32 @@ struct CleanProgressSheet: View {
     }
 
     private func runningBody(completed: Int, total: Int, lastPath: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 14) {
+            HStack(spacing: 16) {
+                EatingWormAnimation(size: 96)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Worm is munching through junk files…")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Theme.ink)
+                    Text("Chewing unneeded caches, old logs, and residual traces.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Theme.background)
+            )
+
             ProportionBar(fraction: total > 0 ? Double(completed) / Double(total) : 0,
-                          height: 6)
+                          height: 7)
             HStack {
                 Text("\(completed) of \(total)")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .monospacedDigit()
                 Spacer()
                 Text(lastPath)
                     .lineLimit(1)
@@ -172,14 +195,19 @@ struct CleanProgressSheet: View {
                     .foregroundStyle(Theme.inkSecondary)
             }
             Spacer()
+            let isRunning: Bool = {
+                if case .running = store.cleanPhase { return true }
+                return false
+            }()
             Button("Done") { store.dismissCleanSummary() }
                 .buttonStyle(.plain)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(isRunning ? Theme.inkTertiary : .white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
-                .background(Theme.accent,
+                .background(isRunning ? Theme.hairline : Theme.accent,
                             in: RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+                .disabled(isRunning)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 11)

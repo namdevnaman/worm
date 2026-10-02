@@ -101,6 +101,24 @@ struct LeftoversView: View {
                 HStack(spacing: 12) {
                     Text("\(store.orphanGroups.count) apps")
                     Text(ByteFormat.compact(store.orphanBytes))
+                    Spacer()
+
+                    Button("Select All") {
+                        store.selectAllLeftovers()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.accent)
+
+                    Text("·")
+                        .foregroundStyle(Theme.inkTertiary)
+
+                    Button("Clear") {
+                        store.deselectAllLeftovers()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Theme.inkTertiary)
                 }
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.ink)
@@ -143,9 +161,19 @@ struct LeftoversView: View {
     }
 
     private var loading: some View {
-        VStack(spacing: 10) {
-            ProgressView().controlSize(.small)
-            Text("Checking every app folder for traces…")
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Theme.surfaceRaised)
+                    .frame(width: 80, height: 80)
+                    .overlay(Circle().strokeBorder(Theme.accent.opacity(0.4), lineWidth: 2))
+                    .shadow(color: Theme.accent.opacity(0.18), radius: 10, y: 3)
+                DiggingWormAnimation(size: 64)
+            }
+            Text("Worm is digging into leftover folders…")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.ink)
+            Text("Finding leftovers from uninstalled apps.")
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.inkTertiary)
         }
@@ -188,9 +216,19 @@ struct LeftoversView: View {
 
     private func groupRow(_ group: OrphanDetector.OrphanGroup) -> some View {
         let isExpanded = expanded.value.contains(group.bundleID)
+        let removable = group.leftovers.filter {
+            SafetyPolicy.verdict(for: $0.path, bundleID: $0.bundleID,
+                                 whitelist: .empty, probeLiveness: false).isAllowed
+        }
         let selectedCount = group.leftovers.filter { store.isSelected(leftover: $0) }.count
+        let allSelected = !removable.isEmpty && removable.allSatisfy { store.isSelected(leftover: $0) }
 
-        return HStack(spacing: 9) {
+        return HStack(spacing: 8) {
+            // App-level Checkbox: one click selects all traces in this app
+            Checkbox(isOn: allSelected, label: "Select all items in \(group.displayName)") {
+                store.toggleGroup(group)
+            }
+
             Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(Theme.inkTertiary)
@@ -224,7 +262,7 @@ struct LeftoversView: View {
                 .foregroundStyle(Theme.inkSecondary)
                 .monospacedDigit()
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .contentShape(Rectangle())
         .onTapGesture {
@@ -235,6 +273,7 @@ struct LeftoversView: View {
             expanded.value = next
         }
         .contextMenu {
+            Button("Select All in App") { store.toggleGroup(group) }
             Button("Select Rebuildable Items") { store.selectRebuildable(in: group) }
             Button("Clear Selection") { store.clearSelection(in: group) }
         }
@@ -423,6 +462,7 @@ struct LeftoversView: View {
                          ? "Remove Selected"
                          : "Remove \(selected.count) Item\(selected.count == 1 ? "" : "s")")
                         .font(.system(size: 12, weight: .semibold))
+                        .contentTransition(.numericText())
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
@@ -431,7 +471,8 @@ struct LeftoversView: View {
                         .fill(selected.isEmpty ? Theme.hairline : Theme.accent))
                 .foregroundStyle(selected.isEmpty ? Theme.inkTertiary : .white)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(FluidButtonStyle(scale: 0.97))
+            .animation(Theme.springSmooth, value: selected.count)
             .disabled(selected.isEmpty || store.cleanIsRunning)
 
             Text("Removed items go to the Trash, so you can put them back if an app turns out to want them.")

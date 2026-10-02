@@ -5,7 +5,8 @@ import MoleCore
 /// and a detail inspector for the highlighted item.
 struct CleanView: View {
     @EnvironmentObject var store: AppStore
-        var body: some View {
+
+    var body: some View {
         HSplitView {
             sidebar
                 .frame(minWidth: 210, idealWidth: 230, maxWidth: 300)
@@ -143,6 +144,7 @@ struct CleanView: View {
                          ? "Clean"
                          : "Clean \(ByteFormat.compact(store.selectedBytes))")
                         .font(.system(size: 12, weight: .semibold))
+                        .contentTransition(.numericText())
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
@@ -152,7 +154,8 @@ struct CleanView: View {
                 )
                 .foregroundStyle(store.selectedPaths.isEmpty ? Theme.inkTertiary : .white)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(FluidButtonStyle(scale: 0.97))
+            .animation(Theme.springSmooth, value: store.selectedPaths.count)
             .disabled(store.selectedPaths.isEmpty || store.cleanIsRunning)
 
             // Shared with Settings, so the two screens cannot drift apart visually.
@@ -172,9 +175,28 @@ struct CleanView: View {
                            title: "Scan failed",
                            detail: message)
             } else if store.scanState.isScanning {
-                emptyState(symbol: "hourglass",
-                           title: "Scanning",
-                           detail: "Measuring cache and log folders. Large folders take a moment.")
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(Theme.surfaceRaised)
+                            .frame(width: 88, height: 88)
+                            .overlay(
+                                Circle().strokeBorder(Theme.accent.opacity(0.4), lineWidth: 2)
+                            )
+                            .shadow(color: Theme.accent.opacity(0.18), radius: 12, y: 4)
+                        DiggingWormAnimation(size: 70)
+                    }
+                    Text("Worm is aerating your system soil…")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                    Text("Sniffing out orphan app traces, heavy cache piles, and stale junk.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 340)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(30)
             } else if store.visibleTargets.isEmpty && store.visibleBlocked.isEmpty {
                 emptyState(symbol: store.selectedCategory.symbol,
                            title: "Nothing in \(store.selectedCategory.title)",

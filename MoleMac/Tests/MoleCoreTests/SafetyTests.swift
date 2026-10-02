@@ -311,7 +311,7 @@ struct PathIdentityTests {
     @Test("Identity distinguishes two files at different paths")
     func distinctFiles() {
         let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("molemac-test-\(UUID().uuidString)")
+            .appendingPathComponent("worm-test-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
@@ -335,7 +335,7 @@ struct PathIdentityTests {
     @Test("Capturing the same path twice matches")
     func stableCapture() {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("molemac-stable-\(UUID().uuidString)")
+            .appendingPathComponent("worm-stable-\(UUID().uuidString)")
         FileManager.default.createFile(atPath: url.path, contents: Data(repeating: 7, count: 32))
         defer { try? FileManager.default.removeItem(at: url) }
 
