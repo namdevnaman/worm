@@ -10,3 +10,4 @@ skills-lock.json
 # .NET build output
 bin/
 obj/
+release-artifacts/

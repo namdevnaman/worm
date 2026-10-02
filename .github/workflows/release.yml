@@ -48,8 +48,9 @@ jobs:
             cp Worm-macOS.zip staged/
           } 2>&1 | tee build-macos.log
 
-      # Keeps a failing macOS build diagnosable from the public artifact API,
-      # which does not require repository admin rights.
+      # Keeps a failing macOS build diagnosable. Artifact downloads need admin
+      # rights, but ::error:: annotations are readable from the public check-runs
+      # API, so the tail of the log is republished where tooling can see it.
       - name: Upload macOS build log
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,6 +58,17 @@ jobs:
           name: worm-macos-log
           path: build-macos.log
           if-no-files-found: ignore
+
+      - name: Report macOS build failure
+        if: failure()
+        run: |
+          {
+            echo "### macOS build log (tail)"
+            echo '```'
+            tail -50 build-macos.log 2>/dev/null || echo '(no build log produced)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=macOS build failed::$(tail -1 build-macos.log 2>/dev/null | tr -d '\r' | cut -c1-240)"
 
       - name: Verify macOS bundle
         run: |
