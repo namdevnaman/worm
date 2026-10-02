@@ -161,22 +161,16 @@ public sealed class XamlBindingLinterTests
     private static Dictionary<string, bool> ReadModelSources(string uiDir)
     {
         var found = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var coreDir = Directory.GetParent(uiDir)!.FullName + Path.DirectorySeparatorChar + "WormCore";
+        var coreDir = Path.Combine(Directory.GetParent(uiDir)!.FullName, "WormCore");
         var roots = Directory.Exists(coreDir) ? new[] { uiDir, coreDir } : new[] { uiDir };
 
-        foreach (var file in roots.SelectMany(
-                     r => Directory.Exists(r)
-                         ? Directory.GetFiles(r, "*.cs", SearchOption.AllDirectories)
-                         : Array.Empty<string>()))
+        foreach (var file in SourceFiles(roots))
         {
             var text = File.ReadAllText(file);
+
+            // Comments would otherwise hide a "get =>" that looks like a setter.
             text = Regex.Replace(text, @"//.*?$", "", RegexOptions.Multiline);
             text = Regex.Replace(text, @"/\*.*?\*/", "", RegexOptions.Singleline);
-
-            // Build output carries copies of the same types and generated BAML.
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") ||
-                file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
-                continue;
 
             // Positional record parameters become public get-only properties, and
             // several DiskPage bindings target exactly those (FolderSize.Path,
@@ -199,11 +193,10 @@ public sealed class XamlBindingLinterTests
                 else
                 {
                     // Walk the braces to see whether a set accessor appears.
-                    var start = m.Index;
                     var depth = 0;
-                    var end = start;
+                    var end = m.Index;
                     for (var i = m.Index + m.Groups["body"].Value.Length - 1;
-                         i < text.Length && i < start + 4000; i++)
+                         i < text.Length && i < m.Index + 4000; i++)
                     {
                         if (text[i] == '{') depth++;
                         else if (text[i] == '}')
@@ -213,20 +206,63 @@ public sealed class XamlBindingLinterTests
                         }
                     }
 
-                    var bodyText = text.Substring(start, Math.Min(end - start + 1, 4000));
+                    var bodyText = text.Substring(m.Index, Math.Min(end - m.Index + 1, 4000));
                     writable = Regex.IsMatch(bodyText, @"\bset\b\s*(\{|\;|=>)");
                 }
 
                 // A name declared both ways anywhere is treated as writable only if
                 // every declaration is writable, which is what this catches.
-                if (found.TryGetValue(name, out var existing))
-                    found[name] = existing && writable;
-                else
-                    found[name] = writable;
+                found[name] = found.TryGetValue(name, out var existing)
+                    ? existing && writable
+                    : writable;
             }
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// C# sources under the given roots, skipping bin and obj directories
+    /// entirely.
+    ///
+    /// They are pruned at the directory level rather than filtered afterwards:
+    /// bin/obj under src is deep, duplicated per RID and framework, and walking
+    /// into it is both pointless and the one part of this test that is sensitive
+    /// to how long the checkout path happens to be on the current OS.
+    /// </summary>
+    private static IEnumerable<string> SourceFiles(IEnumerable<string> roots)
+    {
+        foreach (var root in roots)
+        {
+            if (!Directory.Exists(root)) continue;
+
+            var pending = new Stack<string>();
+            pending.Push(root);
+
+            while (pending.Count > 0)
+            {
+                var dir = pending.Pop();
+
+                string[] files;
+                try { files = Directory.GetFiles(dir, "*.cs"); }
+                catch (IOException) { continue; }
+                catch (UnauthorizedAccessException) { continue; }
+
+                foreach (var file in files) yield return file;
+
+                string[] children;
+                try { children = Directory.GetDirectories(dir); }
+                catch (IOException) { continue; }
+                catch (UnauthorizedAccessException) { continue; }
+
+                foreach (var child in children)
+                {
+                    var name = Path.GetFileName(child);
+                    if (name == "obj" || name == "bin") continue;
+                    pending.Push(child);
+                }
+            }
+        }
     }
 
     /// <summary>

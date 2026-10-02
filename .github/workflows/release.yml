@@ -175,9 +175,41 @@ jobs:
 
       # The catalog's allowlist and safety invariants are the things that must
       # never silently drift, so they run before anything is packaged.
+      # Output is captured and re-emitted as check annotations on failure. Job
+      # logs need admin to read, so without this a red release here is
+      # undiagnosable to anyone who is not the repository owner - which is how
+      # the macOS job stayed broken for three releases.
       - name: Run WormCore safety tests
         shell: pwsh
-        run: dotnet test worm-windows/tests/WormCore.Tests/WormCore.Tests.csproj -c Release --nologo
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'worm-tests.log'
+          dotnet test worm-windows/tests/WormCore.Tests/WormCore.Tests.csproj `
+            -c Release --nologo --logger "trx;LogFileName=results.trx" 2>&1 |
+            Tee-Object -FilePath $log
+          $code = $LASTEXITCODE
+
+          if ($code -ne 0) {
+            Write-Host "::group::Failing tests"
+            Select-String -Path $log -Pattern '^\s*(Failed|Error Message|Stack Trace)' -Context 0,6 |
+              ForEach-Object { Write-Host $_.ToString() }
+            Write-Host "::endgroup::"
+
+            # Surface it publicly on the checks page, not just in the log.
+            Write-Host "::error title=WormCore tests failed::dotnet test exited $code. Full output is in the worm-windows-tests artifact."
+            "## WormCore safety tests failed" >> $env:GITHUB_STEP_SUMMARY
+            "```" >> $env:GITHUB_STEP_SUMMARY
+            Get-Content $log -Tail 80 >> $env:GITHUB_STEP_SUMMARY
+            "```" >> $env:GITHUB_STEP_SUMMARY
+            throw "WormCore safety tests failed - see the step summary"
+          }
+
+      - name: Upload test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worm-windows-tests
+          path: ${{ runner.temp }}/worm-tests.log
+          if-no-files-found: warn
 
       - name: Validate installer scripts parse
         shell: pwsh
