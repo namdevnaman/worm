@@ -1,4 +1,4 @@
-import MoleCore
+import WormCore
 import SwiftUI
 
 /// Readable Disk screen.

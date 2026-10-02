@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 @main
 struct WormApp: App {

@@ -1,5 +1,5 @@
 import Foundation
-import MoleCore
+import WormCore
 
 let which = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "policy"
 let t0 = Date()

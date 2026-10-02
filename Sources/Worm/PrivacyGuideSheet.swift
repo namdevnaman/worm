@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// Complete visual guide for macOS permissions, Gatekeeper, and Privacy blocking.
 ///

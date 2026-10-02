@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// Settings: the protect list, the delete mode default, and the audit log.
 struct SettingsView: View {

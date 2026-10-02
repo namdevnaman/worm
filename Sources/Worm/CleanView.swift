@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// The main Clean screen: category list on the left, item list in the middle,
 /// and a detail inspector for the highlighted item.

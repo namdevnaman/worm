@@ -1,4 +1,4 @@
-import MoleCore
+import WormCore
 import SwiftUI
 
 /// Shown when the app can list a protected folder but not read its contents.

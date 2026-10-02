@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import MoleCore
+@testable import WormCore
 
 /// Leftover detection is the newest and least proven part of the engine, and
 /// its failure modes are the worst kind: reporting a live app's data as an

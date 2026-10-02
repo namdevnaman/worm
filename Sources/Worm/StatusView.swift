@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// Live system health. Read-only by design: this screen tells the user what
 /// state the machine is in, and a finding points at a screen where they can act.

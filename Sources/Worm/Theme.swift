@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 import IOKit.pwr_mgt
 
 /// Visual language for the app. One place, so a colour or radius never drifts

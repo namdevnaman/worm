@@ -1,4 +1,4 @@
-import MoleCore
+import WormCore
 import SwiftUI
 
 /// Leftovers screen: every trace left by apps that are no longer installed.

@@ -1,4 +1,4 @@
-import MoleCore
+import WormCore
 import SwiftUI
 
 /// Selection state for the uninstall sheet.

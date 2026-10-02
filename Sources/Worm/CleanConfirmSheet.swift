@@ -1,4 +1,4 @@
-import MoleCore
+import WormCore
 import SwiftUI
 
 /// Confirmation shown before a clean runs.

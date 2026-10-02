@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// Apps view: installed apps with sizes, plus leftover data from apps that are
 /// already gone. Removal always goes through the Trash.

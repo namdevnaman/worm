@@ -59,7 +59,7 @@ swift --version
 ```bash
 # 1. Clone the repository
 git clone https://github.com/namdevnaman/worm.git
-cd worm/MoleMac
+cd worm
 
 # 2. Build the optimized release bundle
 ./scripts/build-app.sh
@@ -71,10 +71,10 @@ cd worm/MoleMac
 ### Packaging a Disk Image (.dmg)
 If you wish to create a distributable `.dmg` file:
 ```bash
-cd MoleMac
+
 ./scripts/create-dmg.sh
 ```
-The output disk image will be placed in `MoleMac/dist/Worm-1.0.1.dmg`.
+The output disk image will be placed in `dist/Worm-1.0.1.dmg`.
 
 ---
 

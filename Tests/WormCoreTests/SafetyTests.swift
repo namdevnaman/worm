@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import MoleCore
+@testable import WormCore
 
 /// These tests are the safety contract. Each one asserts that a path a user
 /// would never want destroyed is refused, and that a legitimate cache is not.

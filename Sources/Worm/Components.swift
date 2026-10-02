@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// Sidebar row for one clean category. Shows selected/total and reclaimable
 /// bytes, which is the pair a user actually decides on.

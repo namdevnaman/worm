@@ -5,20 +5,20 @@ let package = Package(
     name: "Worm",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "MoleCore"),
+        .target(name: "WormCore"),
         .executableTarget(
             name: "Worm",
-            dependencies: ["MoleCore"]
+            dependencies: ["WormCore"]
         ),
         // Diagnostics harness. Not shipped in the app bundle; it exists so the
         // scan engine can be measured and exercised without a window.
         .executableTarget(
-            name: "MoleDiag",
-            dependencies: ["MoleCore"]
+            name: "WormDiag",
+            dependencies: ["WormCore"]
         ),
         .testTarget(
-            name: "MoleCoreTests",
-            dependencies: ["MoleCore"]
+            name: "WormCoreTests",
+            dependencies: ["WormCore"]
         ),
     ]
 )

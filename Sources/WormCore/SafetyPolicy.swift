@@ -791,7 +791,7 @@ public final class Whitelist: @unchecked Sendable {
 
     public func move(fromOffsets source: IndexSet, toOffset destination: Int) throws {
         var current = entries
-        // Hand-rolled so MoleCore stays free of a SwiftUI dependency; the UI
+        // Hand-rolled so WormCore stays free of a SwiftUI dependency; the UI
         // layer only needs the resulting order, not the gesture itself.
         let moving = source.sorted().compactMap { index in
             current.indices.contains(index) ? current[index] : nil

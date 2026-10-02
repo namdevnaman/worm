@@ -1,5 +1,5 @@
 import SwiftUI
-import MoleCore
+import WormCore
 
 /// Modal shown while a clean runs and after it finishes. It reports exactly
 /// what happened, including what was kept and why — the part a CLI summary

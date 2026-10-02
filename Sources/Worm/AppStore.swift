@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 import Foundation
-import MoleCore
+import WormCore
 
 /// Shared state for the whole app. One observable store keeps the views in sync
 /// without threading a dozen environment objects through the view tree.

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="MoleMac/Resources/AppIcon_512.png" width="128" height="128" alt="Worm App Icon" />
+<img src="Resources/AppIcon_512.png" width="128" height="128" alt="Worm App Icon" />
 
 # Worm 🪱
 ### Ultra-Fast, Safe & Transparent System Cleaner & Monitor for macOS
@@ -67,7 +67,7 @@ Most Mac cleaners are bloated, require subscription traps, or operate as black b
 ```bash
 # Clone the repository
 git clone https://github.com/namdevnaman/worm.git
-cd worm/MoleMac
+cd worm
 
 # Build and package Worm.app
 ./scripts/build-app.sh
