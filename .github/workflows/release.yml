@@ -183,25 +183,26 @@ jobs:
         shell: pwsh
         run: |
           $log = Join-Path $env:RUNNER_TEMP 'worm-tests.log'
-          dotnet test worm-windows/tests/WormCore.Tests/WormCore.Tests.csproj `
-            -c Release --nologo --logger "trx;LogFileName=results.trx" 2>&1 |
-            Tee-Object -FilePath $log
+          dotnet test worm-windows/tests/WormCore.Tests/WormCore.Tests.csproj -c Release --nologo *> $log
           $code = $LASTEXITCODE
+          Get-Content $log -Tail 100 | Write-Host
+          "WormCore safety tests exit code: $code" | Write-Host
+          if ($code -ne 0) { throw "WormCore safety tests failed - see the worm-windows-tests artifact" }
 
-          if ($code -ne 0) {
-            Write-Host "::group::Failing tests"
-            Select-String -Path $log -Pattern '^\s*(Failed|Error Message|Stack Trace)' -Context 0,6 |
-              ForEach-Object { Write-Host $_.ToString() }
-            Write-Host "::endgroup::"
-
-            # Surface it publicly on the checks page, not just in the log.
-            Write-Host "::error title=WormCore tests failed::dotnet test exited $code. Full output is in the worm-windows-tests artifact."
-            "## WormCore safety tests failed" >> $env:GITHUB_STEP_SUMMARY
-            "```" >> $env:GITHUB_STEP_SUMMARY
-            Get-Content $log -Tail 80 >> $env:GITHUB_STEP_SUMMARY
-            "```" >> $env:GITHUB_STEP_SUMMARY
-            throw "WormCore safety tests failed - see the step summary"
+      - name: Summarise test failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'worm-tests.log'
+          "## WormCore safety tests failed" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          "```" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          if (Test-Path $log) {
+            Get-Content $log -Tail 120 | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          } else {
+            "log file was never written - the dotnet test process did not start" | Out-File -Append $env:GITHUB_STEP_SUMMARY
           }
+          "```" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          Write-Host "::error title=WormCore safety tests failed::Full output is in the worm-windows-tests artifact."
 
       - name: Upload test log on failure
         if: failure()
