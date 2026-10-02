@@ -18,7 +18,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/namdevnaman/worm/pulls)
 
 
-[**Download**](#download-worm-cleaner) · [**Features**](#features) · [**How it compares**](#worm-vs-commercial-cleaners) · [**FAQ**](#faq) · [**Setup guide**](SETUP.md)
+[**What's new**](#whats-new-in-v104) · [**Download**](#download-worm-cleaner) · [**Features**](#features) · [**How it compares**](#worm-vs-commercial-cleaners) · [**FAQ**](#faq) · [**Setup guide**](SETUP.md)
 
 
 </div>
@@ -44,15 +44,54 @@ Worm Cleaner is built as a transparent alternative to subscription cleaners such
 
 ---
 
+## What's new in v1.0.4
+
+Windows caught up with macOS. The six screens now exist on both platforms, and
+Clean Screen blackout mode ships on both.
+
+**Safety**
+
+- AppData is no longer enumerated wholesale. Caches are reached through explicit
+  leaf paths instead.
+- The WSL package rule is gone, and NuGet's shared cache is no longer a target.
+- **Old Windows Installations** is opt-in and can only be ticked item by item,
+  never through its parent category row. A missed rollback leaves a machine
+  unbootable, so it is never selected in bulk.
+
+**Performance**
+
+- Apps and Leftovers no longer hang on large installs. Enumeration is
+  registry-first, install identities are cached once instead of per check, and
+  sizing no longer walks whole directories on the UI thread.
+
+**Motion and Clean Screen**
+
+- Animations reproduce the macOS springs rather than approximating them. The three
+  springs from `Theme.swift` are evaluated as real damped-spring curves, derived
+  analytically from the Swift `response` and `dampingFraction` values.
+- Clean Screen draws one borderless window per monitor. Escape is caught with a
+  low-level keyboard hook, because the overlay cannot take focus.
+- The navigation pane is drag-resizable.
+
+**Diagnostics**
+
+- `Worm.exe --selftest` measures Escape handling and spring behaviour instead of
+  asking you to eyeball them. See the FAQ below.
+- 50 tests, including a lint that rejects XAML bindings the runtime would throw
+  on. XAML compiles to BAML, so a bad binding is invisible to `dotnet build` and
+  only fails once a list has items — this catches it before release.
+
+---
+
 ## Download Worm Cleaner
 
-Latest release: **v1.0.3**
+Latest release: **v1.0.4**
 
 | Platform | Format | Download | Notes |
 | --- | --- | --- | --- |
-| macOS 14+ (Apple Silicon & Intel) | DMG installer | [**Worm-Installer.dmg**](https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-Installer.dmg) | Drag to Applications. Includes a Gatekeeper helper. |
-| macOS 14+ (Apple Silicon & Intel) | ZIP | [**Worm-macOS.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-macOS.zip) | Portable `Worm.app` bundle. |
-| Windows 10 / 11 (x64) | ZIP | [**Worm-Windows-x64.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-Windows-x64.zip) | Self-contained, no runtime required. Includes `Install-Worm.ps1`. |
+| macOS 14+ (Apple Silicon & Intel) | DMG installer | [**Worm-Installer.dmg**](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Installer.dmg) | Drag to Applications. Includes a Gatekeeper helper. |
+| macOS 14+ (Apple Silicon & Intel) | ZIP | [**Worm-macOS.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-macOS.zip) | Portable `Worm.app` bundle. |
+| Windows 10 / 11 (x64) | ZIP | [**Worm-Windows-x64.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Windows-x64.zip) | Self-contained, no runtime required. Includes `Install-Worm.ps1`. |
 
 > **Windows note:** Worm is not code-signed, so SmartScreen may block it on first
 > launch. Extract the ZIP and double-click **`Install.cmd`** — it removes the
@@ -194,7 +233,7 @@ to the **Recycle Bin** by default.
 
 ### macOS
 
-1. Download [`Worm-Installer.dmg`](https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-Installer.dmg).
+1. Download [`Worm-Installer.dmg`](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Installer.dmg).
 2. Drag `Worm.app` into `/Applications`.
 3. Open it. If Gatekeeper blocks it, go to **System Settings → Privacy & Security → Open Anyway**, or double-click `Open-If-Blocked.command`.
 4. Grant **Full Disk Access** in System Settings so Worm can scan app containers thoroughly.
@@ -205,7 +244,7 @@ Three ways, easiest first.
 
 **1. Double-click (no admin needed)**
 
-1. Download and extract [`Worm-Windows-x64.zip`](https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-Windows-x64.zip).
+1. Download and extract [`Worm-Windows-x64.zip`](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Windows-x64.zip).
 2. Double-click **`Install-Worm.cmd`**.
 
 That clears the Mark-of-the-Web that makes SmartScreen block an unsigned build, verifies the download against `SHA256SUMS.txt`, installs to `%LOCALAPPDATA%\Programs\Worm`, adds Start-menu / Desktop / start-up shortcuts, registers Worm under **Settings → Apps → Installed apps**, and launches it. Uninstall with **`Uninstall.cmd`** or from Settings.
@@ -304,6 +343,23 @@ If SmartScreen still prompts, choose **More info → Run anyway**.
 
 A fully click-through, warning-free install requires a paid code-signing certificate; Worm is MIT open source, so it ships un-signed by design.
 
+### How do I check Clean Screen and the animations work?
+
+Run this in the extracted folder:
+
+```cmd
+Worm.exe --selftest
+```
+
+It measures rather than guesses. It installs a real low-level keyboard hook and
+injects a real Escape to confirm the key actually exits Clean Screen, checks that
+non-Escape keys still pass through, and compares each spring's overshoot and peak
+against the values in `Theme.swift`. It also runs one real animation and samples the
+rendered value every frame, which is what proves the bounce actually appears.
+
+The same report is written to `%LOCALAPPDATA%\Worm\Logs\selftest.txt` if you would
+rather not read the console.
+
 ### Worm.exe is gone from the Windows download, why?
 The single-file `Worm.exe` from v1.0.2 was 68 MB and unreliable: it bundled WPF's compiled XAML and `.g.resources` into a *compressed* single-file bundle, which WPF cannot reliably read, so the app could exit before drawing a window. Windows now ships a self-contained **folder inside `Worm-Windows-x64.zip`**. It is a larger download but has no bundling layer to fail.
 
@@ -322,7 +378,7 @@ macOS protects some app container folders. Without Full Disk Access, Worm cannot
 | **Screens** | Clean, Leftovers, Apps, Disk, Status, Settings | Clean, Leftovers, Apps, Disk, Status, Settings |
 | **Scan rules** | 166 | 66 across 12 categories |
 | **Safety refusal reasons** | 23 | 22 |
-| **Tests** | Swift Testing | xUnit, 48 tests over the safety invariants |
+| **Tests** | Swift Testing | xUnit, 50 tests over the safety invariants |
 | **Build / packaging** | SwiftPM, Universal Binary | Self-contained folder, shipped as a ZIP |
 
 Windows ships the same six screens as macOS, including **Clean Screen** blackout mode

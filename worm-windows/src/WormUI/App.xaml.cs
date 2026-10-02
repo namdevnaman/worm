@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using ModernWpf;
@@ -16,6 +17,16 @@ public partial class App : Application
 
         // A themed startup failure must never abort the process silently.
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+
+        // Diagnostic mode runs before any XAML, because the class of bug that keeps
+        // biting (a bad type converter surfacing only when BAML is loaded) would
+        // otherwise stop the very run meant to diagnose it.
+        if (e.Args.Any(a => string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)))
+        {
+            base.OnStartup(e);
+            Environment.Exit(SelfTest.Run());
+            return;
+        }
 
         base.OnStartup(e);
 

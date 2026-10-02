@@ -66,10 +66,18 @@
 
                                 <!-- Tri-state tick. A plain CheckBox would show a
                                      stale mark when the row state changed without a
-                                     click; WormCheckBox redraws from IsChecked. -->
+                                     click; WormCheckBox redraws from IsChecked.
+
+                                     OneWay is required, not a style choice. TriState is
+                                     a computed get-only property, so a TwoWay binding
+                                     throws while the item template is being applied -
+                                     a runtime-only failure, since XAML still compiles.
+                                     Selection changes are pushed by WormCheckBox's
+                                     CheckedChanged into the rows, and TriState flows
+                                     back to redraw the box. -->
                                 <local:WormCheckBox Grid.Column="0"
                                                     VerticalAlignment="Center" Margin="0,0,4,0"
-                                                    IsChecked="{Binding TriState, Mode=TwoWay}"
+                                                    IsChecked="{Binding TriState, Mode=OneWay}"
                                                     CheckedChanged="Tri_Changed"
                                                     Tag="{Binding}"/>
 

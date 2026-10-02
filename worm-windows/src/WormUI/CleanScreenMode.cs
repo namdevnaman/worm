@@ -155,6 +155,7 @@ public static class CleanScreenMode
     private static readonly List<Window> Blackouts = new();
     private static Cursor? _previousCursor;
     private static IntPtr _hookHandle;
+    private static int _escapeCount;
 
     /// <summary>
     /// Held in a static field so the GC never collects the delegate while the
@@ -164,6 +165,15 @@ public static class CleanScreenMode
     private static readonly LowLevelKeyboardProc _keyProc = OnKeyDown;
 
     public static bool IsActive => Blackouts.Count > 0;
+
+    /// <summary>
+    /// Whether the Escape hook is currently installed. Exposed so the self-test can
+    /// assert the real path rather than a mock of it.
+    /// </summary>
+    public static bool IsEscapeHooked => _hookHandle != IntPtr.Zero;
+
+    /// <summary>Live count of Escape keys intercepted since launch.</summary>
+    public static int EscapeCount => _escapeCount;
 
     public static void Show()
     {
@@ -230,6 +240,66 @@ public static class CleanScreenMode
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint SendInput(uint count, Input[] inputs, int size);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct Input
+    {
+        public uint Type;
+        public InputUnion Data;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    internal struct InputUnion
+    {
+        [FieldOffset(0)] public KeyboardInput Keyboard;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct KeyboardInput
+    {
+        public ushort VirtualKey;
+        public ushort ScanCode;
+        public uint Flags;
+        public uint Time;
+        public IntPtr ExtraInfo;
+    }
+
+    internal const uint InputKeyboard = 1;
+    internal const uint KeyEventKeyUp = 0x0002;
+
+    /// <summary>
+    /// Injects a synthetic Escape so the self-test can prove the hook actually fires
+    /// rather than merely installing. Returns false if SendInput was rejected, which
+    /// happens when the session is not interactive.
+    /// </summary>
+    internal static bool InjectEscape()
+    {
+        var inputs = new[]
+        {
+            new Input
+            {
+                Type = InputKeyboard,
+                Data = new InputUnion
+                {
+                    Keyboard = new KeyboardInput { VirtualKey = VK_ESCAPE }
+                }
+            },
+            new Input
+            {
+                Type = InputKeyboard,
+                Data = new InputUnion
+                {
+                    Keyboard = new KeyboardInput { VirtualKey = VK_ESCAPE, Flags = KeyEventKeyUp }
+                }
+            }
+        };
+
+        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
+        return sent == inputs.Length;
+    }
+
     [DllImport("user32.dll")]
     private static extern IntPtr CallNextHookEx(IntPtr hhk, int code, IntPtr wParam, IntPtr lParam);
 
@@ -263,6 +333,9 @@ public static class CleanScreenMode
         return false;
     }
 
+    internal static IntPtr OnKeyDownForTest(int code, IntPtr wParam, IntPtr lParam)
+        => OnKeyDown(code, wParam, lParam);
+
     private static IntPtr OnKeyDown(int code, IntPtr wParam, IntPtr lParam)
     {
         if (code >= 0 && (wParam.ToInt32() == WM_KEYDOWN || wParam.ToInt32() == WM_SYSKEYDOWN))
@@ -270,6 +343,8 @@ public static class CleanScreenMode
             var key = (int)Marshal.ReadInt32(lParam);
             if (key == VK_ESCAPE)
             {
+                Interlocked.Increment(ref _escapeCount);
+
                 // The hook fires on the thread that installed it, which owns the
                 // overlay windows, but marshalling keeps this safe if that changes.
                 var dispatcher = Application.Current?.Dispatcher;
