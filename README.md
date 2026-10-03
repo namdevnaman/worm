@@ -246,6 +246,30 @@ to the **Recycle Bin** by default.
 
 ---
 
+## Diagnostics: `--selftest`
+
+```bash
+Worm.app/Contents/MacOS/Worm --selftest            # full suite, ~2 min
+Worm.app/Contents/MacOS/Worm --selftest --quick    # crash regression only, ~4s
+Worm.app/Contents/MacOS/Worm --selftest "two hosting"   # one probe by name
+```
+
+It exercises the parts that cannot be unit-tested and reports to stdout and to
+`~/Library/Logs/Worm/selftest.txt`. Exit code is 0 when everything survives.
+
+It exists because of a crash that shipped: clicking a navbar tab could abort the
+process with a SwiftUI view-graph type mismatch. There was no way to catch that
+in a test, because it terminates the process rather than throwing — so the only
+honest signal is whether the process is still alive. `--quick` is the gate; the
+full suite renders every tab synchronously and is for deliberate use.
+
+`swift test` does **not** build in this project with the Command Line Tools: the
+Swift Testing and XCTest macro plugins ship with Xcode. That gap is why the
+harness is a flag on the binary rather than a test target, and it mirrors how
+the Windows build already works (`--selftest`, exit code).
+
+---
+
 ## Safety: how Worm protects your data
 
 1. **Inspect before action.** Every cache entry and leftover is listed with a per-item checkbox, and cleaning only touches what you ticked.

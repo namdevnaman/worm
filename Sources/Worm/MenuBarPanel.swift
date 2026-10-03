@@ -12,12 +12,21 @@ import SwiftUI
 struct MenuBarPanel: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.openWindow) private var openWindow
-    // Start with an empty snapshot — snapshot() blocks 0.35 s on the main thread
-    // due to CPU delta sampling. The .task below replaces it immediately on a
-    // background thread.
+    // Every one of these initialisers runs while SwiftUI is building this view,
+    // inside the view-graph update pass. They must do no I/O.
+    //
+    // They previously did: `emptySnapshot()` shelled out to `ioreg`, and
+    // `AuditLog.totals()` read the entire deletion log. Blocking the main thread
+    // there re-enters the update pass as soon as a second view renders from the
+    // same store — which is exactly what the app does, because the main window
+    // and this panel are both `NSHostingView`s over one `AppStore` — and
+    // SwiftUI aborts with `AG::Graph::value_set: precondition failure`.
+    //
+    // Both start empty and are filled in by the `.task` below, which runs off
+    // the update pass.
     @StateObject private var metrics = Box(SystemMetrics.emptySnapshot())
     @StateObject private var topMemory = Box([(pid: Int32, name: String, rss: Int64)]())
-    @StateObject private var totals = Box(AuditLog.totals())
+    @StateObject private var totals = Box(AuditLog.Totals.empty)
     @StateObject private var history = Box(History())
     @StateObject private var isMenuMode = Box(false)
 
@@ -164,8 +173,15 @@ struct MenuBarPanel: View {
                     metrics.value = snap
                     history.value.append(snap, cores: machine.cores)
                 }
-                topMemory.value = SystemMetrics.topByMemory(limit: 6)
-                totals.value = AuditLog.totals()
+                // Process enumeration and log parsing are both off the main
+                // actor: this runs on the panel's 3-second tick, and doing either
+                // synchronously would stall the very update pass it feeds.
+                topMemory.value = await Task.detached(priority: .utility) {
+                    SystemMetrics.topByMemory(limit: 6)
+                }.value
+                totals.value = await Task.detached(priority: .utility) {
+                    AuditLog.totals()
+                }.value
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
             }
         }

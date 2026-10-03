@@ -467,19 +467,32 @@ public enum SystemMetrics {
 
     /// A fast initial snapshot populated with instantaneous, non-blocking metrics
     /// so the view renders immediately with actual values without waiting for CPU sampling.
+    /// A snapshot with no measurements in it.
+    ///
+    /// Deliberately does **no I/O at all** — no disk walk, no `sysctl`, no
+    /// IOKit, and no subprocess. This is called from a SwiftUI property
+    /// initializer (`MenuBarPanel`), which runs inside the view-graph update
+    /// pass; blocking there re-enters the update and aborts the process with an
+    /// `AG::Graph::value_set` precondition failure as soon as a second view is
+    /// rendering from the same store.
+    ///
+    /// It previously called `batteryHealth()`, which spawns `ioreg` with a
+    /// two-second timeout, plus `gpu()`, `fan()` and `cpuTemperature()`. The
+    /// "empty" snapshot was doing more I/O than the expensive `snapshot()` it
+    /// was written to avoid. Real values arrive from `.task` moments later.
     public static func emptySnapshot() -> Snapshot {
         Snapshot(
-            disk: disk(),
-            memory: memory(),
-            battery: battery(),
-            uptimeSeconds: uptime(),
-            loadAverage: loadAverage(),
+            disk: Disk(totalBytes: 0, usedBytes: 0, freeBytes: 0),
+            memory: Memory(totalBytes: 0, usedBytes: 0, cachedBytes: 0),
+            battery: Battery(percent: nil, isCharging: false, timeToEmptyMinutes: nil),
+            uptimeSeconds: 0,
+            loadAverage: [],
             topCPU: [],
             networkRate: (0, 0),
-            batteryHealth: batteryHealth(),
-            gpu: gpu(),
-            fan: fan(),
-            cpuTemperatureCelsius: cpuTemperature(),
+            batteryHealth: nil,
+            gpu: nil,
+            fan: nil,
+            cpuTemperatureCelsius: nil,
             timestamp: Date())
     }
 

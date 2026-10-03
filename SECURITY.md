@@ -70,6 +70,34 @@ xattr -cr /Applications/Worm.app
 Notarising the build is tracked as an open goal. Until it happens, treat the
 checksum and the source as the trust anchor rather than a signature.
 
+## Blocking work must not happen inside a view update
+
+A SwiftUI property initialiser runs inside the view-graph update pass. Blocking
+the main thread there — a subprocess spawn, a full file read — re-enters the
+update as soon as a second view renders from the same store. The app has two
+such views: the main window and the menu bar panel, both `NSHostingView`s over
+one `AppStore`. The result is not a hang or an exception but an abort:
+
+```
+AG::Graph::value_set: precondition failure
+ViewGraph.beginNextUpdate  →  updateOutputs
+NSHostingView.layout()     →  +[NSAnimationContext runAnimationGroup:]
+```
+
+It shipped as "Worm quit unexpectedly" on a navbar click. Two rules now hold, and
+`--selftest` checks both:
+
+1. **`emptySnapshot()` does no I/O** — no disk walk, no `sysctl`, no IOKit, no
+   subprocess. It previously shelled out to `ioreg` with a two-second timeout,
+   which made the "empty" snapshot cost more than the real one it avoided.
+2. **View initialisers are inert.** Expensive values start as constants and are
+   filled in by `.task`, off the main actor.
+
+If you add a metric, keep it in `SystemMetrics.snapshot()` and let the panel's
+tick loop pick it up. Do not compute it in a `@StateObject` initialiser.
+
+---
+
 ## What the app does and does not do
 
 **Does not:**

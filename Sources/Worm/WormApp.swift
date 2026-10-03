@@ -1,7 +1,7 @@
 import SwiftUI
 import WormCore
 
-@main
+// Entry point lives in main.swift so `--selftest` can run before any UI.
 struct WormApp: App {
     @StateObject private var store = AppStore()
 
@@ -102,22 +102,65 @@ struct RootView: View {
     /// Dismissible, and re-shown only after a rescan so it does not nag.
     @StateObject private var showAccessNotice = Box(true)
     @StateObject private var isTransitioning = Box(false)
+    /// The in-flight delayed swap, so a second click can cancel the first
+    /// instead of queueing behind it. See `triggerSmoothTransition`.
+    @StateObject private var pendingSwap = Box<DispatchWorkItem?>(nil)
 
     enum Tab: Hashable {
         case clean, leftovers, apps, disk, status, settings
     }
 
+    /// Swap the visible tab behind the transition overlay.
+    ///
+    /// Three defects used to live here, and together they aborted the process
+    /// with a SwiftUI view-graph type mismatch — `AG::Graph::value_set`
+    /// precondition failure, from `ViewGraph.beginNextUpdate` under
+    /// `+[NSAnimationContext runAnimationGroup:]`. Reproduced by
+    /// `Worm.app/Contents/MacOS/Worm --selftest`; see `SelfTest.swift`.
+    ///
+    /// 1. **The swap was never cancellable.** Each click queued its own
+    ///    `asyncAfter`, so a burst of clicks produced a backlog of swaps that all
+    ///    landed inside each other's animation contexts.
+    /// 2. **The content swap was animated.** `selection.value = target` changed
+    ///    the *concrete type* of the `Group`'s `switch` while inside
+    ///    `withAnimation`. Animating a type change makes SwiftUI try to write a
+    ///    value of one type into a graph node allocated for another. The content
+    ///    swap is now instantaneous; only the overlay animates.
+    /// 3. **The `Group` had no stable identity**, so SwiftUI reused the graph
+    ///    node in place across the type change. It is now keyed by tab, so a tab
+    ///    change is a discard-and-rebuild instead of an in-place mutation.
     private func triggerSmoothTransition(to target: Tab) {
-        guard target != selection.value else { return }
+        // Capture the boxes rather than `self`: `RootView` is a struct, so there
+        // is no reference to capture weakly, and pulling out the three boxes makes
+        // it explicit that only those are touched from the deferred block.
+        let selectionBox = selection
+        let transitionBox = isTransitioning
+        let pendingBox = pendingSwap
+
+        // Coalesce: a click that lands mid-transition replaces the pending swap
+        // rather than adding to it. Clicking five tabs quickly now performs one
+        // swap, to the last one.
+        pendingBox.value?.cancel()
+
+        guard target != selectionBox.value else { return }
+
         withAnimation(.easeInOut(duration: 0.15)) {
-            isTransitioning.value = true
+            transitionBox.value = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            selection.value = target
+
+        let item = DispatchWorkItem {
+            pendingBox.value = nil
+
+            // Deliberately NOT inside withAnimation. This changes the concrete
+            // view type; animating it is what corrupted the graph.
+            selectionBox.value = target
+
             withAnimation(.easeOut(duration: 0.25)) {
-                isTransitioning.value = false
+                transitionBox.value = false
             }
         }
+        pendingBox.value = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: item)
     }
 
     private var currentTabColor: Color {

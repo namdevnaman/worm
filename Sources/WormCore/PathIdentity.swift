@@ -134,6 +134,11 @@ public enum AuditLog {
         public let optimised: Int
         public let refused: Int
 
+        /// Zeroed totals, for views that need a value before any log has been
+        /// read. Constructing this is free; `from(_:)` parses the whole file.
+        public static let empty = Totals(
+            cleanedBytes: 0, uninstalled: 0, optimised: 0, refused: 0)
+
         public static func from(_ entries: [Entry]) -> Totals {
             var cleaned: Int64 = 0
             var uninstalled = 0, optimised = 0, refused = 0
