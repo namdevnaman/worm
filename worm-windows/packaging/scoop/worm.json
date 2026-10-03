@@ -1,47 +1,50 @@
 {
-    "version": "1.0.3",
-    "description": "Free, open-source system cleaner, app uninstaller and hardware monitor for Windows",
-    "homepage": "https://github.com/namdevnaman/worm",
-    "license": "MIT",
-    "tags": [
-        "cleaner",
-        "disk-cleanup",
-        "uninstall",
-        "system-monitor",
-        "privacy",
-        "open-source"
+  "version": "1.0.4",
+  "description": "Free, open-source system cleaner, app uninstaller and hardware monitor for Windows",
+  "homepage": "https://github.com/namdevnaman/worm",
+  "license": "MIT",
+  "tags": [
+    "cleaner",
+    "disk-cleanup",
+    "uninstall",
+    "system-monitor",
+    "privacy",
+    "open-source"
+  ],
+  "checkver": {
+    "url": "https://api.github.com/repos/namdevnaman/worm/releases/latest",
+    "jsonpath": "$.tag_name"
+  },
+  "autoupdate": {
+    "url": "https://github.com/namdevnaman/worm/releases/latest/download/Worm-Windows-x64.zip",
+    "hash": {
+      "url": "https://github.com/namdevnaman/worm/releases/latest/download/SHA256SUMS.txt",
+      "regex": "([a-f0-9]{64})\\s+Worm-Windows-x64\\.zip"
+    }
+  },
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/namdevnaman/worm/releases/latest/download/Worm-Windows-x64.zip"
+    }
+  },
+  "bin": [
+    "Worm.exe"
+  ],
+  "shortcuts": [
+    [
+      "Worm.exe",
+      "Worm",
+      "Start menu"
     ],
-    "checkver": {
-        "url": "https://api.github.com/repos/namdevnaman/worm/releases/latest",
-        "jsonpath": "$.tag_name"
-    },
-    "autoupdate": {
-        "url": "https://api.github.com/repos/namdevnaman/worm/releases/latest",
-        "hash": "https://github.com/namdevnaman/worm/releases/download/v1.0.3/SHA256SUMS.txt"
-    },
-    "architecture": {
-        "64bit": {
-            "url": "https://github.com/namdevnaman/worm/releases/download/v1.0.3/Worm-Windows-x64.zip"
-        }
-    },
-    "bin": [
-        "Worm.exe"
-    ],
-    "shortcuts": [
-        [
-            "Worm.exe",
-            "Worm",
-            "Start menu"
-        ],
-        [
-            "Worm.exe",
-            "Worm",
-            "Desktop"
-        ]
-    ],
-    "notes": [
-        "Worm is open source and NOT code-signed, so Windows SmartScreen may warn on first launch.",
-        "If it is blocked, extract the ZIP and run Install-Worm.ps1 to clear the Mark-of-the-Web.",
-        "Scoop installs per-user into %LOCALAPPDATA%\\scoop\\apps\\worm and needs no administrator rights."
+    [
+      "Worm.exe",
+      "Worm",
+      "Desktop"
     ]
+  ],
+  "notes": [
+    "Worm is open source and NOT code-signed, so Windows SmartScreen may warn on first launch.",
+    "If it is blocked, extract the ZIP and run Install-Worm.ps1 to clear the Mark-of-the-Web.",
+    "Scoop installs per-user into %LOCALAPPDATA%\\scoop\\apps\\worm and needs no administrator rights."
+  ]
 }

@@ -394,6 +394,8 @@ rather than a public issue. See [SECURITY.md](SECURITY.md).
 
 ### macOS
 
+There is no Homebrew cask yet — install from the DMG or ZIP below.
+
 1. Download [`Worm-Installer.dmg`](https://github.com/namdevnaman/worm/releases/latest/download/Worm-Installer.dmg).
 2. Drag `Worm.app` into `/Applications`.
 3. Open it. If Gatekeeper blocks it, go to **System Settings → Privacy & Security → Open Anyway**, or double-click `Open-If-Blocked.command`.
@@ -410,18 +412,30 @@ Three ways, easiest first.
 
 That clears the Mark-of-the-Web that makes SmartScreen block an unsigned build, verifies the download against `SHA256SUMS.txt`, installs to `%LOCALAPPDATA%\Programs\Worm`, adds Start-menu / Desktop / start-up shortcuts, registers Worm under **Settings → Apps → Installed apps**, and launches it. Uninstall with **`Uninstall.cmd`** or from Settings.
 
-**2. Scoop**
+  **2. Scoop**
 
-```powershell
-scoop bucket add worm https://raw.githubusercontent.com/namdevnaman/worm/main/worm-windows/packaging/scoop/worm.json
-scoop install worm
-```
+  ```powershell
+  scoop bucket add worm https://raw.githubusercontent.com/namdevnaman/worm/main/worm-windows/packaging/scoop/worm.json
+  scoop install worm
+  ```
 
-**3. PowerShell**
+  The manifest tracks the newest published release, so `scoop update worm` moves
+  to the latest version without the manifest being edited per release.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Worm.ps1
-```
+  **3. PowerShell**
+
+  From the extracted ZIP:
+
+  ```powershell
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Worm.ps1
+  ```
+
+  Or straight from the repository, without downloading the ZIP first:
+
+  ```powershell
+  irm https://raw.githubusercontent.com/namdevnaman/worm/main/worm-windows/scripts/Install-Worm.ps1 | iex
+  ```
+
 
 Add `-Purge` to also delete logs and settings, or `-InstallDir 'D:\Apps\Worm'` to relocate. Worm installs per-user, so **no administrator rights are required** — deliberately, because an unsigned MSI would trigger a UAC "unknown publisher" prompt and MsiExecTrust block, which is a worse first-run experience than a portable ZIP.
 
