@@ -11,15 +11,26 @@ CONFIG="${CONFIG:-release}"
 APP_NAME="Worm"
 BUNDLE_ID="dev.local.worm"
 
-# Bundle version. Previously hardcoded to 1.0.1, which shipped stale versions in
-# Finder's "Get Info" and in the DMG. Prefer the caller's VERSION (CI passes the
-# release tag), then the newest git tag, and only then a literal fallback.
-if [ -z "${VERSION:-}" ]; then
-    VERSION="$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-fi
-if [ -z "${VERSION:-}" ]; then
-    VERSION="1.0.3"
-fi
+  # Bundle version. Previously hardcoded, which shipped stale versions in Finder's
+  # "Get Info" and in the DMG; then a literal fallback, which was worse — a build
+  # with no tag silently became 1.0.3 and nothing said so.
+  #
+  # Order: the caller's VERSION (CI passes the release tag), then the newest git
+  # tag, then WORM_VERSION for an untagged local build. If none resolve, fail
+  # rather than invent a number.
+  if [ -z "${VERSION:-}" ]; then
+      VERSION="$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+  fi
+  if [ -z "${VERSION:-}" ]; then
+      VERSION="${WORM_VERSION:-}"
+  fi
+  if [ -z "${VERSION:-}" ]; then
+      echo "error: cannot determine the version." >&2
+      echo "  Pass VERSION=<x.y.z> (what CI does from the tag), or WORM_VERSION=<x.y.z>" >&2
+      echo "  for an untagged local build. Refusing to guess a version number." >&2
+      exit 1
+  fi
+  echo "  version: $VERSION"
 
 BUILD_DIR="$ROOT/.build/$CONFIG"
 APP="$ROOT/dist/$APP_NAME.app"

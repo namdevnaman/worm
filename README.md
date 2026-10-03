@@ -49,7 +49,48 @@ Worm Cleaner is built as a transparent alternative to subscription cleaners such
 
 ---
 
-## What's new in v1.0.4
+## What's new in v1.0.5
+
+Two crash fixes, both the same underlying mistake, plus the tooling that stops it
+coming back.
+
+**Fixes**
+
+- **Navbar tabs could abort the app.** Switching screens could terminate Worm
+  with a SwiftUI view-graph type mismatch. The cause was blocking I/O inside the
+  menu bar panel's view initialisers: `SystemMetrics.emptySnapshot()` shelled out
+  to `ioreg` with a two-second timeout, and `AuditLog.totals()` read the entire
+  deletion log. The main window and the menu bar panel are both `NSHostingView`s
+  over one store, so as soon as both rendered, one blocked the main thread while
+  the other was mid-update. `emptySnapshot()` is now genuinely empty, and both
+  values are filled in off the main actor.
+- **Cleaning could segfault mid-run.** The menu bar panel's Telemetry view read a
+  computed property that ran `/sbin/route` and blocked in `waitUntilExit` — once
+  per render, on the main thread. Cleaning publishes progress continuously, so
+  the panel re-evaluated many times a second while every evaluation blocked the
+  main thread. The lookup is now cached and computed off the main thread.
+- **Tab switching no longer queues work it does not need.** Each click used to
+  schedule its own uncancellable delayed swap, so a burst of clicks produced a
+  backlog of view-type swaps landing inside each other's animations. Rapid clicks
+  now coalesce to a single swap, and the content swap is no longer animated.
+
+**Tooling**
+
+- `Worm.app/Contents/MacOS/Worm --selftest` is a new diagnostic harness, mirroring
+  the Windows build's existing `--selftest`. It reproduces the aborts above and
+  guards them; `--quick` runs the crash probes in about four seconds.
+- A source lint asserts that no view `body` or computed property blocks on I/O.
+  Three separate crashes came out of that one mistake, and the lint is verified
+  to fail on the original code. It mirrors the Windows build's XAML binding lint.
+- `build-app.sh` and the release workflow no longer fall back to a hardcoded
+  version number. A build with no tag used to silently become whatever literal
+  was left in the file; they now refuse rather than ship a stale version in
+  Finder and in the DMG name.
+
+Upgrade from v1.0.4 with no configuration change. Your protect list and deletion
+audit log are untouched by the upgrade.
+
+### Previous: v1.0.4
 
 Windows caught up with macOS. The six screens now exist on both platforms, and
 Clean Screen blackout mode ships on both.
@@ -90,13 +131,18 @@ Clean Screen blackout mode ships on both.
 
 ## Download Worm Cleaner
 
-Latest release: **v1.0.4**
+Latest release: **v1.0.5**
 
 | Platform | Format | Download | Notes |
 | --- | --- | --- | --- |
-| macOS 14+ (Apple Silicon & Intel) | DMG installer | [**Worm-Installer.dmg**](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Installer.dmg) | Drag to Applications. Includes a Gatekeeper helper. |
-| macOS 14+ (Apple Silicon & Intel) | ZIP | [**Worm-macOS.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-macOS.zip) | Portable `Worm.app` bundle. |
-| Windows 10 / 11 (x64) | ZIP | [**Worm-Windows-x64.zip**](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Windows-x64.zip) | Self-contained, no runtime required. Includes `Install-Worm.ps1`. |
+| macOS 14+ (Apple Silicon & Intel) | DMG installer | [**Worm-Installer.dmg**](https://github.com/namdevnaman/worm/releases/latest/download/Worm-Installer.dmg) | Drag to Applications. Includes a Gatekeeper helper. |
+| macOS 14+ (Apple Silicon & Intel) | ZIP | [**Worm-macOS.zip**](https://github.com/namdevnaman/worm/releases/latest/download/Worm-macOS.zip) | Portable `Worm.app` bundle. |
+| Windows 10 / 11 (x64) | ZIP | [**Worm-Windows-x64.zip**](https://github.com/namdevnaman/worm/releases/latest/download/Worm-Windows-x64.zip) | Self-contained, no runtime required. Includes `Install-Worm.ps1`. |
+
+> These use GitHub's `releases/latest/download/` path, so they always resolve to
+> the newest published release and never break when a version is bumped. The
+> [Releases page](https://github.com/namdevnaman/worm/releases) is the place to
+> check what *is* current.
 
 > **Windows note:** Worm is not code-signed, so SmartScreen may block it on first
 > launch. Extract the ZIP and double-click **`Install.cmd`** — it removes the
@@ -295,11 +341,11 @@ shasum -a 256 ~/Downloads/Worm-Installer.dmg
 Get-FileHash -Algorithm SHA256 Worm-Windows-x64.zip
 ```
 
-Current digests for **v1.0.4**, taken from the published release:
+Current digests for **v1.0.5**:
 
 ```
-6ae5f01072b506e6a6ae19225d5483b63fd53671e6519dea0d4202b9a8e353d1  Worm-Installer.dmg
-8addf36453262d6227d1b1c924a253563974e7d0637ed3fda374c007b1232b43  Worm-macOS.zip
+d3dd58c3165ad438c5d0db749807b29ba8303901fe47482ee74f10798d4fd88c  Worm-Installer.dmg
+6afffb5bf0ea119984802e2ba051ebfac99bc38083b919839d6110fd4485532a  Worm-macOS.zip
 0169d3282e79f2cb8c7ff386c379c4c6ad0f07d29efae5267fbae6d17147e6af  Worm-Windows-x64.zip
 ```
 
@@ -348,7 +394,7 @@ rather than a public issue. See [SECURITY.md](SECURITY.md).
 
 ### macOS
 
-1. Download [`Worm-Installer.dmg`](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Installer.dmg).
+1. Download [`Worm-Installer.dmg`](https://github.com/namdevnaman/worm/releases/latest/download/Worm-Installer.dmg).
 2. Drag `Worm.app` into `/Applications`.
 3. Open it. If Gatekeeper blocks it, go to **System Settings → Privacy & Security → Open Anyway**, or double-click `Open-If-Blocked.command`.
 4. Grant **Full Disk Access** in System Settings so Worm can scan app containers thoroughly.
@@ -359,7 +405,7 @@ Three ways, easiest first.
 
 **1. Double-click (no admin needed)**
 
-1. Download and extract [`Worm-Windows-x64.zip`](https://github.com/namdevnaman/worm/releases/download/v1.0.4/Worm-Windows-x64.zip).
+1. Download and extract [`Worm-Windows-x64.zip`](https://github.com/namdevnaman/worm/releases/latest/download/Worm-Windows-x64.zip).
 2. Double-click **`Install-Worm.cmd`**.
 
 That clears the Mark-of-the-Web that makes SmartScreen block an unsigned build, verifies the download against `SHA256SUMS.txt`, installs to `%LOCALAPPDATA%\Programs\Worm`, adds Start-menu / Desktop / start-up shortcuts, registers Worm under **Settings → Apps → Installed apps**, and launches it. Uninstall with **`Uninstall.cmd`** or from Settings.
