@@ -354,6 +354,9 @@ figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.7rem; }
       "installUrl": "https://github.com/namdevnaman/worm/releases/latest",
       "codeRepository": "https://github.com/namdevnaman/worm",
       "image": "https://worm.clepsydratechnologies.com/images/worm-og.png",
+      "screenshot": [
+        "https://worm.clepsydratechnologies.com/images/screenshot-mac-clean.png"
+      ],
       "softwareRequirements": "macOS 14+ (Apple Silicon or Intel) or Windows 10/11 64-bit",
       "offers": {
         "@type": "Offer",
@@ -502,6 +505,8 @@ figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 0.7rem; }
 <tr><th scope="row">App leftovers</th><td>Orphaned bundle identifiers, preference plists and Application Support folders left by uninstalled apps</td></tr>
 <tr><th scope="row">Monitoring</th><td>Menu bar CPU, memory (App / Wired / Compressed), disk and thermal readouts</td></tr>
 </tbody></table>
+
+<figure><img src="/images/screenshot-mac-clean.png" alt="Worm Cleaner running on macOS showing its Clean screen: 2.99 GB reclaimable, a tri-state checkbox beside each cache category, and a per-item list of app caches with exact sizes and full paths including Microsoft Edge at 766.40 MB and Homebrew at 515.96 MB, with caches of running apps flagged &quot;App is open&quot; instead of deleted" width="1600" height="595" loading="lazy" decoding="async" /><figcaption>Worm's Clean screen on macOS. Every cache is listed with its measured size and full path, each one carries its own checkbox, regenerable items are ticked by default, and anything whose owning app is still running is flagged rather than deleted.</figcaption></figure>
 
 <div class="note"><p><strong>What it will not touch, on purpose.</strong> Xcode Archives, <code>iOS DeviceSupport</code> and simulator runtimes are explicitly protected, because a distribution archive or a signed-device symbol bundle cannot be rebuilt from the machine if you delete it. CocoaPods is not supported. Docker on macOS is reported read-only, not cleaned. Worm draws that line in <code>SafetyPolicy.swift</code> and you can read it.</p></div>
 

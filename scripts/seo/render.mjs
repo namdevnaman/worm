@@ -531,6 +531,9 @@ function jsonLd(page, allPages) {
       installUrl: SITE.releases,
       codeRepository: SITE.repo,
       image: `${SITE.origin}${SITE.ogImage}`,
+      // A real screenshot of the app, which is what SoftwareApplication.screenshot
+      // is for. Distinct from `image`, which is the social sharing card.
+      screenshot: [`${SITE.origin}/images/screenshot-mac-clean.png`],
       softwareRequirements: "macOS 14+ (Apple Silicon or Intel) or Windows 10/11 64-bit",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD", availability: "https://schema.org/InStock" },
       featureList: [

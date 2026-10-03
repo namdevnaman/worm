@@ -77,6 +77,14 @@ export const PAGES = [
       },
       MACOS_CLEAN_TABLE,
       {
+        t: "img",
+        src: "/images/screenshot-mac-clean.png",
+        width: 1600,
+        height: 595,
+        alt: "Worm Cleaner running on macOS showing its Clean screen: 2.99 GB reclaimable, a tri-state checkbox beside each cache category, and a per-item list of app caches with exact sizes and full paths including Microsoft Edge at 766.40 MB and Homebrew at 515.96 MB, with caches of running apps flagged \"App is open\" instead of deleted",
+        caption: "Worm's Clean screen on macOS. Every cache is listed with its measured size and full path, each one carries its own checkbox, regenerable items are ticked by default, and anything whose owning app is still running is flagged rather than deleted.",
+      },
+      {
         t: "note",
         html: `<p><strong>What it will not touch, on purpose.</strong> Xcode Archives, <code>iOS DeviceSupport</code> and simulator runtimes are explicitly protected, because a distribution archive or a signed-device symbol bundle cannot be rebuilt from the machine if you delete it. CocoaPods is not supported. Docker on macOS is reported read-only, not cleaned. Worm draws that line in <code>SafetyPolicy.swift</code> and you can read it.</p>`,
       },
@@ -246,6 +254,14 @@ export const PAGES = [
         t: "p",
         html:
           "<p>Fast and scriptable, and it bypasses every safety check Worm would apply. There is no confirmation step, no size report and no Trash, so if you have the path slightly wrong you will not find out until it is gone. Use it when you know exactly what you are doing.</p>",
+      },
+      {
+        t: "img",
+        src: "/images/screenshot-mac-clean.png",
+        width: 1600,
+        height: 595,
+        alt: "Worm Cleaner running on macOS showing its Clean screen: 2.99 GB reclaimable, a tri-state checkbox beside each cache category, and a per-item list of app caches with exact sizes and full paths including Microsoft Edge at 766.40 MB and Homebrew at 515.96 MB, with caches of running apps flagged \"App is open\" instead of deleted",
+        caption: "Worm's Clean screen on macOS. Every cache is listed with its measured size and full path, each one carries its own checkbox, regenerable items are ticked by default, and anything whose owning app is still running is flagged rather than deleted.",
       },
       {
         t: "h2",
@@ -957,6 +973,14 @@ export const PAGES = [
       },
       { t: "h2", html: "Why does macOS warn me? (And why that is expected)" },
       { t: "note", html: GATEKEEPER },
+      {
+        t: "img",
+        src: "/images/screenshot-mac-clean.png",
+        width: 1600,
+        height: 595,
+        alt: "Worm Cleaner running on macOS showing its Clean screen: 2.99 GB reclaimable, a tri-state checkbox beside each cache category, and a per-item list of app caches with exact sizes and full paths including Microsoft Edge at 766.40 MB and Homebrew at 515.96 MB, with caches of running apps flagged \"App is open\" instead of deleted",
+        caption: "Worm's Clean screen on macOS. Every cache is listed with its measured size and full path, each one carries its own checkbox, regenerable items are ticked by default, and anything whose owning app is still running is flagged rather than deleted.",
+      },
       { t: "h2", html: "How Worm protects your files" },
       {
         t: "ol",
@@ -1170,6 +1194,14 @@ export const PAGES = [
         t: "p",
         html:
           "<p>Sorting the options makes the choice much easier, because most &ldquo;best Mac cleaner&rdquo; lists mix categories and compare them on the wrong axes.</p><ul><li><strong>Dedicated open-source cleaners.</strong> One job, no telemetry, no subscription. Mole and Worm are in this group, as are narrower CLI tools.</li><li><strong>Single-purpose uninstallers.</strong> AppCleaner and similar: excellent at removing one app's leftovers, and they do nothing else.</li><li><strong>Free tiers of commercial suites.</strong> CleanMyMac, MacCleaner and similar. Feature-rich, subscription-based, and the free tier is usually the same binary with the upsell left in.</li></ul>",
+      },
+      {
+        t: "img",
+        src: "/images/screenshot-mac-clean.png",
+        width: 1600,
+        height: 595,
+        alt: "Worm Cleaner running on macOS showing its Clean screen: 2.99 GB reclaimable, a tri-state checkbox beside each cache category, and a per-item list of app caches with exact sizes and full paths including Microsoft Edge at 766.40 MB and Homebrew at 515.96 MB, with caches of running apps flagged \"App is open\" instead of deleted",
+        caption: "Worm's Clean screen on macOS. Every cache is listed with its measured size and full path, each one carries its own checkbox, regenerable items are ticked by default, and anything whose owning app is still running is flagged rather than deleted.",
       },
       { t: "h2", html: "Comparison" },
       {
