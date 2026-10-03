@@ -16,3 +16,29 @@ release-artifacts/
 node_modules/
 build/
 
+
+# ─────────────────────────────────────────────────────────────────────────
+# WEBSITE — lives in namdevnaman/worm_website, not here.
+#
+# This working directory holds both projects, so a `git add -A` from it would
+# otherwise commit the marketing site into the application repository again. It
+# already happened once. Ignore it here; edit and commit it in the other repo.
+# ─────────────────────────────────────────────────────────────────────────
+/index.html
+/package.json
+/package-lock.json
+/tsconfig.json
+/vite.config.ts
+/vercel.json
+/src/
+/public/
+/docs/
+
+# Website tooling that also lives in the website repo.
+scripts/seo/
+scripts/build-seo-pages.mjs
+scripts/sync-faq.mjs
+scripts/verify-seo.mjs
+scripts/virustotal.mjs
+scripts/indexnow.mjs
+scripts/github-seo-setup.sh
