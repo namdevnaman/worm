@@ -62,7 +62,31 @@ public enum Paths {
         return URL(fileURLWithPath: s, isDirectory: true)
     }
 
-    @discardableResult
+    /// Counts subprocess spawns.
+    ///
+    /// `run` blocks its calling thread in `waitUntilExit`, so calling it from a
+    /// SwiftUI `body` blocks the view-graph update pass. Two bugs shipped that
+    /// way before this existed, and neither was visible in a screenshot or a
+    /// crash log until the fault surfaced elsewhere. The self-test asserts that
+    /// rendering a view spawns nothing, which is far more reliable than trying to
+    /// provoke the race.
+    private static let spawnCounter = SpawnCounter()
+    public static var subprocessSpawnCount: Int { spawnCounter.value }
+    /// Which binaries were spawned since the last reset, with counts.
+    public static var subprocessSpawnLog: [String: Int] { spawnCounter.log }
+    public static func resetSubprocessSpawnCount() { spawnCounter.reset() }
+
+    private final class SpawnCounter: @unchecked Sendable {
+        private let lock = NSLock()
+        private var count = 0
+        private var byPath: [String: Int] = [:]
+        var value: Int { lock.withLock { count } }
+        var log: [String: Int] { lock.withLock { byPath } }
+        func bump(_ path: String) { lock.withLock { count += 1; byPath[path, default: 0] += 1 } }
+        func reset() { lock.withLock { count = 0; byPath = [:] } }
+    }
+
+      @discardableResult
     public static func run(_ launchPath: String, _ args: [String], timeout: TimeInterval) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: launchPath)
@@ -72,6 +96,7 @@ public enum Paths {
         process.standardOutput = out
         process.standardError = err
         try process.run()
+        spawnCounter.bump(launchPath)
 
         // Read both pipes concurrently: a producer that fills a pipe buffer would
         // otherwise deadlock against waitUntilExit. `timeout` is a hard

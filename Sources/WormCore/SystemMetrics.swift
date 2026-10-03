@@ -496,6 +496,45 @@ public enum SystemMetrics {
             timestamp: Date())
     }
 
+    /// Human label for the active primary network interface.
+    ///
+    /// Read from the default route: `en0` is Wi-Fi on a MacBook, other `en*` is
+    /// usually Ethernet, and `utun*` is a tunnel.
+    ///
+    /// Cached for a minute because it costs a `/sbin/route` subprocess, and
+    /// `Paths.run` blocks its caller in `waitUntilExit`. This was previously a
+    /// computed property read straight from `MenuBarPanel.body`, so every render
+    /// of the panel's Telemetry mode spawned a subprocess on the main thread —
+    /// which is how the panel segfaulted during a clean, when progress updates
+    /// made it re-render continuously.
+    ///
+    /// Callers must still prefer the panel's cached copy: even a cache hit is a
+    /// lock, and a view body should not be doing this work at all.
+    public static func networkInterfaceLabel() -> String {
+        if let cached = networkLabelCache.cached() { return cached }
+        let value = readNetworkInterfaceLabel()
+        networkLabelCache.store(value)
+        return value
+    }
+
+    private static let networkLabelCache = LivenessProbe.ProbeCache<String>(ttl: 60)
+
+    private static func readNetworkInterfaceLabel() -> String {
+        guard let out = try? Paths.run("/sbin/route", ["-n", "get", "default"], timeout: 2),
+              out.status == 0 else { return "Network" }
+        for line in out.stdout.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("interface:") else { continue }
+            let iface = trimmed.replacingOccurrences(of: "interface:", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            if iface.hasPrefix("en") { return iface == "en0" ? "Wi-Fi" : "Ethernet" }
+            if iface.hasPrefix("utun") || iface.hasPrefix("ipsec") { return "VPN" }
+            if iface.hasPrefix("bridge") { return "Bridge" }
+            return iface
+        }
+        return "Network"
+    }
+
     public static func snapshot() -> Snapshot {
         let net = networkTotals()
         var rate: (rx: Int64, tx: Int64) = (0, 0)

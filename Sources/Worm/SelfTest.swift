@@ -66,6 +66,133 @@ enum SelfTest {
     /// probes that reproduce the original abort, in a few seconds, so it can
     /// gate a build; the full suite renders every tab synchronously and is for
     /// deliberate use rather than every commit.
+    /// Wait until no subprocess spawns occur, so a measurement window is not
+    /// polluted by an earlier probe's background work.
+    ///
+    /// A fixed delay is not enough: `OrphanDetector` shells out to
+    /// `lsregister -dump` with a twenty-second timeout, and that can land in the
+    /// middle of the next probe's window.
+    @MainActor
+    private static func settleSpawns(maxWait: TimeInterval = 8.0) {
+        let deadline = Date().addingTimeInterval(maxWait)
+        var quietRounds = 0
+        while Date() < deadline {
+            Paths.resetSubprocessSpawnCount()
+            pump(0.25)
+            if Paths.subprocessSpawnCount == 0 {
+                quietRounds += 1
+                if quietRounds >= 3 { return }
+            } else {
+                quietRounds = 0
+            }
+        }
+    }
+
+    /// The UI sources worth linting: everything under Sources/Worm.
+    static func viewSources() -> [(String, [String])] {
+        // Resolved from this file's own location so the harness needs no
+        // knowledge of the checkout layout.
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // Worm
+            .deletingLastPathComponent()   // Sources
+            .appendingPathComponent("Worm")
+        let fm = FileManager.default
+        guard let names = try? fm.contentsOfDirectory(atPath: root.path) else { return [] }
+        return names
+            .filter { $0.hasSuffix(".swift") && $0 != "main.swift" && $0 != "SelfTest.swift" }
+            .sorted()
+            .compactMap { name in
+                let url = root.appendingPathComponent(name)
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+                return (name, text.components(separatedBy: "\n"))
+            }
+    }
+
+    /// Blocking constructs that must not run on the view-update thread.
+    private static let blockingIO = [
+        "Paths.run", "Process()", "waitUntilExit",
+        "String(contentsOf:", "contentsOfDirectory(",
+    ]
+
+    /// Find I/O that is reachable from a `body` or a computed property.
+    ///
+    /// Two things make the difference between this and a naive grep, both of
+    /// which produced false positives on the first attempt:
+    ///
+    /// - **Comments are stripped first.** These files explain the bugs this lint
+    ///   exists to prevent, and a naive grep flags every warning comment about
+    ///   `waitUntilExit`.
+    /// - **`Task.detached` blocks are skipped.** Hoisting work onto a background
+    ///   task is the *correct* fix, so `DiskView`'s scan and `StatusView`'s
+    ///   `SystemFactsCapture` must not be reported.
+    private static func blockingIOSites(
+        in sources: [(String, [String])]
+    ) -> [String] {
+        var offences: [String] = []
+
+        for (name, rawLines) in sources {
+            var bodyDepth: Int? = nil
+            var propertyOpen = false
+            var deferredDepth: Int? = nil
+            var depth = 0
+
+            for (n, raw) in rawLines.enumerated() {
+                // Strip comments. A `///` or `//` line is documentation, not code.
+                let code: String
+                if let slash = raw.range(of: "//") {
+                    code = String(raw[raw.startIndex..<slash.lowerBound])
+                } else {
+                    code = raw
+                }
+                let line = code.trimmingCharacters(in: .whitespaces)
+                let opens = code.filter { $0 == "{" }.count
+                let closes = code.filter { $0 == "}" }.count
+
+                // Inside a detached task: off the main thread by construction.
+                if deferredDepth != nil {
+                    depth += opens - closes
+                    if depth <= deferredDepth! { deferredDepth = nil }
+                    continue
+                }
+
+                let inScope = bodyDepth != nil || propertyOpen
+                if inScope {
+                    for bad in blockingIO where line.contains(bad) {
+                        offences.append("\(name):\(n + 1): \(bad) in `\(line)`")
+                    }
+                }
+
+                if bodyDepth == nil, line.contains("var body") {
+                    bodyDepth = depth
+                } else if propertyOpen, depth <= 0 {
+                    propertyOpen = false
+                } else if !propertyOpen, bodyDepth == nil,
+                          (line.hasPrefix("private var ") || line.hasPrefix("var ")
+                           || line.hasPrefix("static var ")),
+                          !line.contains(": some View") {
+                    propertyOpen = true
+                }
+
+                if line.contains("Task.detached") {
+                    deferredDepth = depth + opens - 1
+                }
+
+                depth += opens - closes
+                if depth <= 0 {
+                    depth = max(depth, 0)
+                    propertyOpen = false
+                    if let b = bodyDepth, b > 0 { bodyDepth = nil }
+                }
+            }
+        }
+
+        return offences
+    }
+
+    private static func lastPathComponent(_ path: String) -> String {
+        (path as NSString).lastPathComponent
+    }
+
     @MainActor
     static func run(filter: String? = nil, quick: Bool = false) -> Int32 {
         let effectiveFilter: String? = if quick { filter ?? "regression" } else { filter }
@@ -318,19 +445,46 @@ enum SelfTest {
             }
         }
 
-        // The fix for the crash changed `emptySnapshot()` to do no I/O, which is
-        // only safe if real values still arrive afterwards. Assert that directly,
+        // A sampling probe cannot separate body work from Worm's background
+        // metric poller, which legitimately shells out every few seconds. These
+        // two checks replaced an earlier pair that counted spawns over a render
+        // loop and produced a false positive for exactly that reason.
+        // The clean-time crash had a second half: `networkInterfaceLabel` was a
+        // computed property in `MenuBarPanel.body`, reached only in the panel's
+        // Telemetry mode, so it ran `/sbin/route` on the main thread once per
+        // render. Telemetry mode is private state, so this asserts the property
+        // that makes it safe instead — the lookup is cached, so a second read
+        // costs no subprocess.
+        probe("regression: network interface lookup is cached") {
+            Paths.resetSubprocessSpawnCount()
+            let first = SystemMetrics.networkInterfaceLabel()
+            let afterFirst = Paths.subprocessSpawnCount
+            precondition(afterFirst <= 1,
+                         "networkInterfaceLabel() spawned \(afterFirst) subprocesses for one call")
+
+            // Twenty more reads, as twenty renders would do.
+            for _ in 0..<20 {
+                _ = SystemMetrics.networkInterfaceLabel()
+            }
+            let total = Paths.subprocessSpawnCount
+            precondition(total == afterFirst,
+                         "networkInterfaceLabel() re-ran /sbin/route \(total - afterFirst) extra time(s) — it is not cached")
+            precondition(!first.isEmpty, "networkInterfaceLabel() returned an empty label")
+        }
+
+        // The first crash fix changed `emptySnapshot()` to do no I/O, which is
+        // only safe if real values still arrive afterwards. Assert that directly
         // rather than trusting a screenshot: the panel starts from the empty
         // snapshot and is filled in by its `.task`.
         probe("regression: metrics still populate after the empty snapshot change") {
             let empty = SystemMetrics.emptySnapshot()
             // The empty snapshot must be genuinely inert, or it is the bug again.
             precondition(empty.disk.totalBytes == 0,
-                         "emptySnapshot still reports disk totals — it is doing I/O")
+                         "emptySnapshot reports disk totals — it is doing I/O")
             precondition(empty.memory.totalBytes == 0,
-                         "emptySnapshot still reports memory totals — it is doing I/O")
+                         "emptySnapshot reports memory totals — it is doing I/O")
             precondition(empty.loadAverage.isEmpty,
-                         "emptySnapshot still reports load average — it is doing I/O")
+                         "emptySnapshot reports a load average — it is doing I/O")
             precondition(empty.batteryHealth == nil,
                          "emptySnapshot still spawns ioreg for battery health")
             precondition(empty.gpu == nil && empty.fan == nil,
@@ -344,6 +498,23 @@ enum SelfTest {
                          "snapshot() no longer reports a disk — the panel would show zeros")
             precondition(real.memory.totalBytes > 0,
                          "snapshot() no longer reports memory")
+        }
+
+        // The rule itself, checked rather than sampled: a SwiftUI view must not
+        // block on I/O from its `body` or from a computed property it reads.
+        //
+        // Three separate crashes came out of that one mistake and none was
+        // visible in a screenshot, so the check is a source lint — mirroring the
+        // Windows build's XAML binding lint, for the same reason: the failure is a
+        // property of the code's shape, so the check should be too.
+        probe("regression: no view body computes blocking I/O") {
+            let sources = SelfTest.viewSources()
+            precondition(!sources.isEmpty, "found no view sources to lint")
+
+            let offences = SelfTest.blockingIOSites(in: sources)
+            for o in offences { emit("      \(o)") }
+            precondition(offences.isEmpty,
+                         "a view body or computed property blocks on I/O (\(offences.count) site(s))")
         }
 
         // Any probe that threw would land here; a crash aborts before it does.

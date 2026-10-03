@@ -29,6 +29,8 @@ struct MenuBarPanel: View {
     @StateObject private var totals = Box(AuditLog.Totals.empty)
     @StateObject private var history = Box(History())
     @StateObject private var isMenuMode = Box(false)
+    /// Filled by `.task` off the main actor. Never computed during `body`.
+    @StateObject private var networkLabel = Box("Network")
 
     private var snapshot: SystemMetrics.Snapshot { metrics.value }
     private var machine: SystemMetrics.Machine { SystemMetrics.Machine.current }
@@ -178,6 +180,9 @@ struct MenuBarPanel: View {
                 // synchronously would stall the very update pass it feeds.
                 topMemory.value = await Task.detached(priority: .utility) {
                     SystemMetrics.topByMemory(limit: 6)
+                }.value
+                networkLabel.value = await Task.detached(priority: .utility) {
+                    SystemMetrics.networkInterfaceLabel()
                 }.value
                 totals.value = await Task.detached(priority: .utility) {
                     AuditLog.totals()
@@ -561,31 +566,14 @@ struct MenuBarPanel: View {
 
     // MARK: – Status Row
 
-    /// Read the active primary network interface name (en0 = Wi-Fi on most Macs,
-    /// en0/en1 = Ethernet on desktops). Returns "Wi-Fi" / "Ethernet" / "Network".
-    private var networkInterfaceLabel: String {
-        // Check if the default route goes through an interface named "en0"
-        // (Wi-Fi on MacBooks) or something else.
-        if let out = try? Paths.run("/sbin/route", ["-n", "get", "default"], timeout: 2),
-           out.status == 0 {
-            let lines = out.stdout.split(separator: "\n")
-            for line in lines {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("interface:") {
-                    let iface = trimmed.replacingOccurrences(of: "interface:", with: "")
-                        .trimmingCharacters(in: .whitespaces)
-                    if iface.hasPrefix("en") {
-                        // en0 on MacBook is typically Wi-Fi
-                        return iface == "en0" ? "Wi-Fi" : "Ethernet"
-                    }
-                    if iface.hasPrefix("utun") || iface.hasPrefix("ipsec") { return "VPN" }
-                    if iface.hasPrefix("bridge") { return "Bridge" }
-                    return iface
-                }
-            }
-        }
-        return "Network"
-    }
+    /// Interface label for the network card.
+    ///
+    /// Reads state, not the system. It used to be a computed property that ran
+    /// `/sbin/route` and blocked in `waitUntilExit` — once per render, on the main
+    /// thread, from inside `body`. Cleaning publishes progress continuously, so
+    /// the panel re-rendered constantly in Telemetry mode and the app segfaulted
+    /// mid-clean. The `.task` below fills this in off the main actor.
+    private var networkInterfaceLabel: String { networkLabel.value }
 
     private var statusRow: some View {
         HStack(spacing: 14) {
