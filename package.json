@@ -1,0 +1,30 @@
+{
+  "name": "worm-cleaner-website",
+  "version": "1.0.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:seo && vite build",
+    "preview": "vite preview",
+    "build:seo": "node scripts/build-seo-pages.mjs",
+    "sync:faq": "node scripts/sync-faq.mjs",
+    "verify:seo": "node scripts/build-seo-pages.mjs --check && node scripts/sync-faq.mjs --check && node scripts/verify-seo.mjs",
+    "typecheck": "tsc --noEmit",
+    "indexnow": "node scripts/indexnow.mjs"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  }
+}

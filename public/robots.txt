@@ -1,0 +1,45 @@
+User-agent: *
+Allow: /
+
+# ───────────────────────────────────────────���─────────────────────────────────
+# AI and answer-engine crawlers are explicitly ALLOWED.
+#
+# Worm is a zero-telemetry product and this site publishes nothing private, so
+# there is no reason to block them. Allowing these is what makes Worm quotable
+# by ChatGPT, Perplexity, Gemini, Google AI Overviews and Claude.
+#
+# If you would rather your content not be used for model TRAINING, set
+# Disallow: / for GPTBot, ClaudeBot and Google-Extended below. Be aware that
+# this measurably lowers the chance of being cited by those tools.
+# ────────────────────────────────────────────────────────────────────────────
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+Sitemap: https://worm.clepsydratechnologies.com/sitemap.xml

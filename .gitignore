@@ -11,3 +11,8 @@ skills-lock.json
 bin/
 obj/
 release-artifacts/
+
+# Web build output & dependencies
+node_modules/
+build/
+
