@@ -11,7 +11,8 @@
     "sync:faq": "node scripts/sync-faq.mjs",
     "verify:seo": "node scripts/build-seo-pages.mjs --check && node scripts/sync-faq.mjs --check && node scripts/verify-seo.mjs",
     "typecheck": "tsc --noEmit",
-    "indexnow": "node scripts/indexnow.mjs"
+    "indexnow": "node scripts/indexnow.mjs",
+    "virustotal": "node scripts/virustotal.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
