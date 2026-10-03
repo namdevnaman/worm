@@ -178,22 +178,30 @@ Dragging an app to the Trash leaves files behind. Worm finds them.
 ### Windows cleaner
 
 66 scan rules across 12 categories, grouped in a sidebar with tri-state
-per-category selection. Every target carries its own checkbox.
+per-category selection. Every target carries its own checkbox. A thirteenth
+category, the Recycle Bin, has no scan rules — see the note below the table.
 
 | Category | Examples |
 | --- | --- |
-| **Developer Tools** | npm, pnpm, Yarn, NuGet, pip, Cargo registry, Gradle task-output cache, VS / VS Code / Cursor / JetBrains caches |
-| **App Caches** | Per-application cache folders, Chromium `Code Cache` / `GPUCache`, Explorer thumbnails |
+| **Developer Tools** | npm, pnpm, Yarn, NuGet, pip, Cargo registry, Gradle task-output cache, Android build cache, VS / VS Code / Cursor / JetBrains caches |
+| **App Caches** | Per-application cache folders, roaming application cache, Chromium `Code Cache` / `GPUCache`, Explorer thumbnails, Internet Explorer cache |
 | **Browsers** | Chrome, Edge, Brave, Firefox, Opera, Vivaldi — across **every** profile, not just `Default` |
-| **Cloud & Office** | OneDrive, Dropbox, Teams |
+| **Cloud & Office** | OneDrive, OneDrive setup logs, Dropbox, Teams |
 | **AI Tools** | Claude Desktop, Codex logs, OpenCode, Copilot |
-| **Apps & Utilities** | Discord, Slack, Teams webview, Spotify, Figma, Unity Hub, Obsidian, Zoom |
-| **Virtualization** | Docker, WSL, Hyper-V, BlueStacks |
-| **User Essentials** | Crash dumps, DirectX shader cache |
-| **System Caches** | `%TEMP%`, `C:\Windows\Temp`, WER archives, Delivery Optimization, Prefetch |
-| **Logs** | User log files, application log folders, pending crash reports |
-| **Recycle Bin** | Measured and emptied across every fixed volume via the Shell API |
-| **Misc** | Minidumps, superseded installers, diagnostic traces |
+| **Apps & Utilities** | Discord, Slack, Teams webview, Spotify, Figma, Unity Hub, Obsidian, Zoom, VS Code Insiders |
+| **Virtualization** | Docker Desktop builder cache, WSL, Hyper-V snapshots, BlueStacks |
+| **User Essentials** | Application crash reports, LiveLock error reports, DirectX shader cache |
+| **System Caches** | `%TEMP%`, `C:\Windows\Temp`, WER archives, Delivery Optimization, Prefetch, Windows shader cache |
+| **Logs** | User log files, application log folders, npm logs, VS Code logs, Gradle daemon logs |
+| **Old Windows Installations** | `Windows.old`, previous Windows installation folders, Windows upgrade files, WinSxS backup, `Windows Installation Image` (ESD) |
+| **Misc** | Minidumps, superseded installers, diagnostic trace files |
+| **Recycle Bin** | *No scan rules.* Measured and emptied across every fixed volume via the Shell API |
+
+> **Why Recycle Bin is different.** It has no filesystem path, so it cannot be
+> walked by a scan rule or guarded by the path-based safety policy. It is
+> measured and emptied through the shell instead, and every action still lands
+> in the audit log. `WindowsScanCatalog.IsSpecialCategory` declares this
+> explicitly so the category list stays complete.
 
 Age gates are applied per rule (7 days for logs and temp, 30 for state). Items go
 to the **Recycle Bin** by default.
@@ -469,8 +477,8 @@ macOS protects some app container folders. Without Full Disk Access, Worm cannot
 | **System access** | Mach kernel APIs, IOKit, libproc | Win32 P/Invoke (`kernel32`, `shell32`, `dwmapi`) |
 | **Screens** | Clean, Leftovers, Apps, Disk, Status, Settings | Clean, Leftovers, Apps, Disk, Status, Settings |
 | **Scan rules** | 166 | 66 across 12 categories |
-| **Safety refusal reasons** | 23 | 22 |
-| **Tests** | Swift Testing | xUnit, 50 tests over the safety invariants |
+| **Safety refusal reasons** | 23 | 19 |
+| **Tests** | Swift Testing, 53 tests | xUnit, 36 tests over the safety invariants |
 | **Build / packaging** | SwiftPM, Universal Binary | Self-contained folder, shipped as a ZIP |
 
 Windows ships the same six screens as macOS, including **Clean Screen** blackout mode

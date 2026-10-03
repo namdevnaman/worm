@@ -92,3 +92,44 @@ The output disk image will be placed in `dist/Worm-1.0.1.dmg`.
 
 - If the Menu Bar icon is not showing, ensure Worm is actively running and you haven't hidden it via menu bar management tools (e.g., Bartender, Ice, Hidden Bar).
 - Need help or encountered a bug? [Submit an Issue](https://github.com/namdevnaman/worm/issues) on GitHub!
+
+---
+
+## 📊 Reproducing the measurements
+
+The comparison figures in the README — idle memory, scan times — are measured on
+the author's machines, not vendor-reported. This is how to reproduce them.
+
+### Idle memory (resident size while idle)
+
+1. Launch Worm and let it settle. Do not run a scan.
+2. `Activity Monitor` → `Memory` tab → find `Worm` → read the **Memory** column.
+   That is resident memory, not compressed or swapped size.
+3. On Windows, open Task Manager → **Details** → right-click the column header
+   and enable **Memory (working set)**.
+
+The README quotes **under 35 MB on macOS** and **under 42 MB on Windows** while
+idle. A large gap between that and a competitor's figure is the point of the
+comparison, so measure rather than estimate.
+
+### Scan time
+
+1. Time a full scan of the Developer Tools category, which is the largest:
+   `time` in Terminal on macOS, or PowerShell `Measure-Command` on Windows.
+2. Run it three times and take the median. The first run is slower while the OS
+   warms its file cache; that warm-up run is not the figure.
+3. Report the median, and say what hardware it ran on.
+
+The README quotes **under 0.8 s on macOS** and **under 0.6 s on Windows** for the
+Xcode and temp-file scan.
+
+### What these numbers are not
+
+- They are **not** a benchmark against other cleaners. Those figures are
+  indicative of the class of tool and are not vendor-verified; check each
+  vendor's own page.
+- Idle memory and scan time say nothing about how much space an app reclaims.
+  That number depends entirely on what is on the machine.
+- Neither figure is a claim that Worm makes your Mac faster. A storage cleaner
+  frees disk space. It does not make hardware faster, and no cleaner honestly
+  can promise that.
