@@ -341,15 +341,20 @@ shasum -a 256 ~/Downloads/Worm-Installer.dmg
 Get-FileHash -Algorithm SHA256 Worm-Windows-x64.zip
 ```
 
-Current digests for **v1.0.5**:
+Current digests for **v1.0.5**, copied from the published assets:
 
 ```
-d3dd58c3165ad438c5d0db749807b29ba8303901fe47482ee74f10798d4fd88c  Worm-Installer.dmg
-6afffb5bf0ea119984802e2ba051ebfac99bc38083b919839d6110fd4485532a  Worm-macOS.zip
-0169d3282e79f2cb8c7ff386c379c4c6ad0f07d29efae5267fbae6d17147e6af  Worm-Windows-x64.zip
+aff19a616df077e4446c6bc3863400ad876d450fadf20f437f4d24e6714bc13c  Worm-Installer.dmg
+9cc326f63c422302d28d2c9d9c8543c9b4c11e8826d9c506eb7bb725c44b3ef5  Worm-macOS.zip
+b8f8d6baa67cf6324dc2910b4c431cf4d1596d60671a5ff8c40c667fa4a7c960  Worm-Windows-x64.zip
 ```
 
 If a digest does not match, do not run the file.
+
+These are the digests of the files **as published**, never of a local build. The
+DMG is not byte-reproducible — CI rebuilds it every run, so hashing your own
+`dist/` copy gives a different answer. Take the digest from the release, or from
+the `SHA256SUMS.txt` asset that ships beside it.
 
 ### macOS will warn you on first launch
 
@@ -455,8 +460,29 @@ cd worm-windows
 scripts\build.bat
 ```
 
-That produces `worm-windows\dist\win-x64\` and a packaged
-`worm-windows\dist\Worm-Windows-x64.zip` with checksums.
+  That produces `worm-windows\dist\win-x64\` and a packaged
+  `worm-windows\dist\Worm-Windows-x64.zip` with checksums.
+
+  ### Cutting a release
+
+  ```bash
+  git tag -a v1.0.6 -m "..." && git push origin v1.0.6
+  ```
+
+  The tag drives everything: `.github/workflows/release.yml` builds both platforms
+  and publishes the assets, resolving the version **from the tag**. Never from the
+  csproj or a local build — `WormUI.csproj` carries whatever `<Version>` was last
+  committed, and `dotnet publish` with no `-p:Version` bakes that stale number into
+  a shipped binary. It already did, for two releases.
+
+  Two mistakes this repo has actually made, recorded so they stay fixed:
+
+  1. **Digests must come from the published release, not a local build.** The DMG
+     is not byte-reproducible, so a local `dist/` hash never matches the CI-built
+     asset. Hash the files you downloaded *from the release*.
+  2. **Check both platforms are attached.** The Windows job failing does not fail
+     the release job, so a green run still publishes a macOS-only release. Verify
+     the Windows ZIP is present before announcing anything.
 
 ---
 
